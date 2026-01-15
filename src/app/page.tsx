@@ -1,13 +1,29 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { User } from 'lucide-react'
 import { CragCard } from '@/components/crag-card'
+import { FloatingSearch } from '@/components/floating-search'
+import { SearchOverlay } from '@/components/search-overlay'
+import { AppTabbar } from '@/components/app-tabbar'
+import { useRouteSearch } from '@/hooks/use-route-search'
 import { getAllCrags } from '@/data/crags'
+import { getAllRoutes } from '@/data/routes'
 
 export default function HomePage() {
   const crags = getAllCrags()
+  const allRoutes = getAllRoutes()
   const [isLoading] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+
+  const { searchQuery, setSearchQuery, searchResults, clearSearch } =
+    useRouteSearch(allRoutes, { limit: 0 })
+
+  const handleCloseSearch = () => {
+    setIsSearchOpen(false)
+    setTimeout(() => clearSearch(), 300)
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden px-4 bg-[var(--m3-surface)]">
@@ -22,14 +38,17 @@ export default function HomePage() {
           </div>
 
           {/* 用户头像 */}
-          <button className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--m3-surface-variant)] flex items-center justify-center transition-transform active:scale-95">
+          <Link
+            href="/profile"
+            className="flex-shrink-0 w-10 h-10 rounded-full bg-[var(--m3-surface-variant)] flex items-center justify-center transition-transform active:scale-95"
+          >
             <User className="w-5 h-5 text-[var(--m3-on-surface-variant)]" />
-          </button>
+          </Link>
         </div>
       </header>
 
       {/* 岩场列表（可滚动区域） */}
-      <main className="flex-1 overflow-y-auto pb-20">
+      <main className="flex-1 overflow-y-auto pb-36">
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-6 w-6 border-2 border-[var(--m3-primary)] border-t-transparent" />
@@ -52,6 +71,22 @@ export default function HomePage() {
           </span>
         </div>
       </main>
+
+      {/* 浮动搜索框 */}
+      <FloatingSearch onClick={() => setIsSearchOpen(true)} />
+
+      {/* 搜索覆盖层 */}
+      <SearchOverlay
+        isOpen={isSearchOpen}
+        onClose={handleCloseSearch}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        results={searchResults}
+        allRoutes={allRoutes}
+      />
+
+      {/* 底部导航栏 */}
+      <AppTabbar />
     </div>
   )
 }
