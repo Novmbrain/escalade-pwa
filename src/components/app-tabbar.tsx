@@ -20,7 +20,7 @@ export function AppTabbar() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[var(--m3-outline-variant)]/50 safe-area-bottom z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-[var(--m3-outline-variant)]/50 safe-area-bottom z-50">
       <div className="flex items-center justify-around h-16 max-w-md mx-auto">
         {TAB_ITEMS.map((tab) => {
           const Icon = tab.icon
@@ -32,23 +32,23 @@ export function AppTabbar() {
               href={tab.path}
               className="relative flex flex-col items-center justify-center flex-1 h-full group active:scale-95 transition-transform"
             >
-              {/* 选中状态背景指示器 */}
-              <div
-                className={`absolute top-2 w-14 h-8 rounded-full transition-all duration-300 ease-out ${active
-                    ? 'bg-[var(--m3-primary-container)] scale-100 opacity-100'
-                    : 'bg-transparent scale-75 opacity-0 group-hover:bg-[var(--m3-surface-variant)]/50 group-hover:scale-100 group-hover:opacity-100'
-                  }`}
-              />
-
-              {/* 图标 */}
-              <Icon
-                className={`relative z-10 w-5 h-5 mb-1 transition-all duration-200 ${active ? 'scale-110' : 'group-hover:scale-105'
-                  }`}
-                style={{
-                  color: active ? colors.primary : colors.outline,
-                  strokeWidth: active ? 2.5 : 2
-                }}
-              />
+              {/* 图标容器 + 选中状态背景指示器 */}
+              <div className="relative flex items-center justify-center w-16 h-8 mb-1">
+                <div
+                  className={`absolute inset-0 rounded-full transition-all duration-300 ease-out ${active
+                      ? 'bg-[var(--m3-primary-container)] scale-100 opacity-100'
+                      : 'bg-transparent scale-75 opacity-0 group-hover:bg-[var(--m3-surface-variant)]/50 group-hover:scale-100 group-hover:opacity-100'
+                    }`}
+                />
+                <Icon
+                  className={`relative z-10 w-5 h-5 transition-all duration-200 ${active ? 'scale-110' : 'group-hover:scale-105'
+                    }`}
+                  style={{
+                    color: active ? colors.primary : colors.outline,
+                    strokeWidth: active ? 2.5 : 2
+                  }}
+                />
+              </div>
 
               {/* 标签 */}
               <span
