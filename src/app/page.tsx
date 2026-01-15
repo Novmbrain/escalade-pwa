@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { User } from 'lucide-react'
 import { CragCard } from '@/components/crag-card'
+import { CragCardSkeleton } from '@/components/crag-card-skeleton'
 import { FloatingSearch } from '@/components/floating-search'
 import { SearchOverlay } from '@/components/search-overlay'
 import { AppTabbar } from '@/components/app-tabbar'
@@ -50,12 +51,7 @@ export default function HomePage() {
       {/* 岩场列表（可滚动区域） */}
       <main className="flex-1 overflow-y-auto pb-36">
         {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-[var(--m3-primary)] border-t-transparent" />
-            <span className="ml-2 text-sm text-[var(--m3-on-surface-variant)]">
-              加载中...
-            </span>
-          </div>
+          <CragCardSkeleton count={4} />
         ) : (
           <div className="space-y-2">
             {crags.map((crag, index) => (

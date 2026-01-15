@@ -4,6 +4,7 @@ import { Suspense, useState, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Search, ChevronRight } from 'lucide-react'
+import { RouteCardSkeleton } from '@/components/route-card-skeleton'
 import { getAllRoutes, getRoutesByCragId } from '@/data/routes'
 import { getAllCrags } from '@/data/crags'
 import { getGradeColor } from '@/lib/tokens'
@@ -173,8 +174,22 @@ export default function RouteListPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-[var(--m3-primary)] border-t-transparent" />
+        <div className="flex flex-col h-screen overflow-hidden bg-[var(--m3-surface)]">
+          <header className="flex-shrink-0 pt-12 px-4 pb-3">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-[var(--m3-surface-variant)] animate-pulse" />
+              <div className="h-7 w-24 rounded-md bg-[var(--m3-surface-variant)] animate-pulse" />
+            </div>
+            <div className="h-10 w-full rounded-full bg-[var(--m3-surface-variant)] animate-pulse mb-3" />
+            <div className="flex gap-2">
+              <div className="h-8 w-16 rounded-full bg-[var(--m3-surface-variant)] animate-pulse" />
+              <div className="h-8 w-16 rounded-full bg-[var(--m3-surface-variant)] animate-pulse" />
+              <div className="h-8 w-14 rounded-full bg-[var(--m3-surface-variant)] animate-pulse" />
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto px-4 pb-4">
+            <RouteCardSkeleton count={6} />
+          </main>
         </div>
       }
     >

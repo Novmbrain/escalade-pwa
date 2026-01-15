@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { ChevronLeft, User, MapPin } from 'lucide-react'
+import { ChevronLeft, User, MapPin, ImageOff } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { getGradeColor } from '@/lib/tokens'
 import type { Route, Crag } from '@/types'
 
@@ -15,6 +17,8 @@ interface RouteDetailClientProps {
 
 export default function RouteDetailClient({ route, crag }: RouteDetailClientProps) {
   const router = useRouter()
+  const [imageLoading, setImageLoading] = useState(true)
+  const [imageError, setImageError] = useState(false)
 
   // 生成 TOPO 图 URL
   const topoImage = `${COS_BASE_URL}/${route.cragId}/${encodeURIComponent(route.name)}.jpg`
@@ -31,12 +35,39 @@ export default function RouteDetailClient({ route, crag }: RouteDetailClientProp
           <ChevronLeft className="w-6 h-6 text-white" />
         </button>
 
+        {/* 图片加载骨架屏 */}
+        {imageLoading && !imageError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Skeleton className="w-20 h-20 rounded-xl" />
+              <Skeleton className="w-32 h-4 rounded-full" />
+            </div>
+          </div>
+        )}
+
+        {/* 图片加载失败 */}
+        {imageError && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2 text-white/60">
+              <ImageOff className="w-12 h-12" />
+              <span className="text-sm">图片加载失败</span>
+            </div>
+          </div>
+        )}
+
         {/* TOPO 图 */}
         <Image
           src={topoImage}
           alt={route.name}
           fill
-          className="object-contain"
+          className={`object-contain transition-opacity duration-300 ${
+            imageLoading ? 'opacity-0' : 'opacity-100'
+          }`}
+          onLoad={() => setImageLoading(false)}
+          onError={() => {
+            setImageLoading(false)
+            setImageError(true)
+          }}
         />
 
         {/* 难度标签 */}
