@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Node Version
+
+This project requires Node.js >= 20.9.0. Use nvm to manage Node versions:
+
+```bash
+nvm use 20       # Switch to Node 20
+```
+
 ## Build Commands
 
 ```bash
@@ -10,8 +18,6 @@ npm run build    # Build for production
 npm run start    # Start production server
 npm run lint     # Run ESLint
 ```
-
-**Note:** Requires Node.js >= 20.9.0 (Next.js 16 requirement). Vercel deployment handles this automatically.
 
 ## Adding shadcn/ui Components
 
