@@ -10,7 +10,7 @@ import type { WithId, Document } from 'mongodb'
  */
 function toCrag(doc: WithId<Document>): Crag {
   const { _id, createdAt, updatedAt, ...rest } = doc
-  return { id: _id as string, ...rest } as Crag
+  return { id: _id as unknown as string, ...rest } as Crag
 }
 
 /**
@@ -18,7 +18,7 @@ function toCrag(doc: WithId<Document>): Crag {
  */
 function toRoute(doc: WithId<Document>): Route {
   const { _id, createdAt, updatedAt, ...rest } = doc
-  return { id: _id as number, ...rest } as Route
+  return { id: _id as unknown as number, ...rest } as Route
 }
 
 // ============ Crag 相关操作 ============

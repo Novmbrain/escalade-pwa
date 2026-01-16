@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.NODE_ENV !== "production",
+  disable: isDev,
 });
 
 const nextConfig: NextConfig = {
@@ -59,4 +61,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSerwist(nextConfig);
+// 开发环境：直接导出配置（使用 Turbopack，无 webpack 配置）
+// 生产环境：用 withSerwist 包装（启用 Service Worker，需要 webpack）
+export default isDev ? nextConfig : withSerwist(nextConfig);

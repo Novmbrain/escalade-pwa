@@ -7,7 +7,7 @@
  *   npm run db:seed:prod     # 生产环境
  */
 
-import { MongoClient } from 'mongodb'
+import { MongoClient, Document } from 'mongodb'
 import * as dotenv from 'dotenv'
 import path from 'path'
 
@@ -130,12 +130,12 @@ async function seed() {
 
     // 插入岩场数据
     console.log('\n📍 插入岩场数据...')
-    const cragResult = await db.collection('crags').insertMany(crags)
+    const cragResult = await db.collection('crags').insertMany(crags as Document[])
     console.log(`✓ 插入 ${cragResult.insertedCount} 个岩场`)
 
     // 插入线路数据
     console.log('\n🧗 插入线路数据...')
-    const routeResult = await db.collection('routes').insertMany(routes)
+    const routeResult = await db.collection('routes').insertMany(routes as Document[])
     console.log(`✓ 插入 ${routeResult.insertedCount} 条线路`)
 
     // 创建索引
