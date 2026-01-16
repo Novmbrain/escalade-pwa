@@ -6,6 +6,9 @@ import type { Document } from 'mongodb'
 /**
  * 解析短链接，获取最终 URL
  * 通过跟踪重定向获取最终目标地址
+ *
+ * 注意：小红书等平台会根据 User-Agent 返回不同响应，
+ * 需要使用移动端 UA 才能正常解析
  */
 async function resolveShortUrl(url: string): Promise<string> {
   // 识别常见短链接域名
@@ -18,11 +21,17 @@ async function resolveShortUrl(url: string): Promise<string> {
   }
 
   try {
-    // 使用 HEAD 请求跟踪重定向（不下载内容）
+    // 使用移动端 User-Agent（小红书等平台需要）
+    const mobileUA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
+
+    // 使用 GET 请求跟踪重定向（某些平台不支持 HEAD）
     const response = await fetch(url, {
-      method: 'HEAD',
+      method: 'GET',
       redirect: 'follow',
-      signal: AbortSignal.timeout(5000), // 5秒超时
+      headers: {
+        'User-Agent': mobileUA,
+      },
+      signal: AbortSignal.timeout(10000), // 10秒超时
     })
 
     // 返回最终 URL
