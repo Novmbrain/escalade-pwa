@@ -1,0 +1,111 @@
+{
+  "name": "罗源野抱 TOPO",
+  "description": "福州罗源攀岩线路分享 PWA 应用（野外抱石攀岩指南）",
+  "generated": "2026-01-16",
+  "version": "0.1.0",
+  "techStack": {
+    "framework": "Next.js 16.1.2 (App Router + ISR)",
+    "database": "MongoDB Atlas",
+    "styling": "Tailwind CSS v4 + shadcn/ui",
+    "pwa": "Serwist 9.5.0",
+    "icons": "lucide-react"
+  },
+  "entryPoints": {
+    "home": "src/app/page.tsx",
+    "routeList": "src/app/route/page.tsx",
+    "cragDetail": "src/app/crag/[id]/page.tsx",
+    "routeDetail": "src/app/route/[id]/page.tsx",
+    "serviceWorker": "src/app/sw.ts",
+    "dataAccess": "src/lib/db/index.ts"
+  },
+  "coreModules": {
+    "db": {
+      "path": "src/lib/db/index.ts",
+      "exports": ["getAllCrags", "getCragById", "getAllRoutes", "getRouteById", "getRoutesByCragId"]
+    },
+    "filterConstants": {
+      "path": "src/lib/filter-constants.ts",
+      "exports": ["GRADE_GROUPS", "FILTER_PARAMS", "getGradesByValue", "getGradesByValues"]
+    },
+    "types": {
+      "path": "src/types/index.ts",
+      "exports": ["Crag", "Route"]
+    },
+    "mongodb": {
+      "path": "src/lib/mongodb.ts",
+      "exports": ["getDatabase"]
+    },
+    "tokens": {
+      "path": "src/lib/tokens.ts",
+      "exports": ["getGradeColor"]
+    }
+  },
+  "components": {
+    "ui": ["button", "card", "skeleton"],
+    "custom": [
+      "filter-chip",
+      "crag-card",
+      "app-tabbar",
+      "floating-search",
+      "search-overlay",
+      "install-prompt",
+      "sw-update-prompt",
+      "offline-indicator",
+      "crag-card-skeleton",
+      "route-card-skeleton"
+    ]
+  },
+  "routes": {
+    "/": { "page": "首页 - 岩场列表", "component": "page.tsx + home-client.tsx" },
+    "/crag/[id]": { "page": "岩场详情", "params": ["id"] },
+    "/route": { "page": "线路列表", "params": ["crag", "grade", "q"] },
+    "/route/[id]": { "page": "线路详情", "params": ["id"] },
+    "/profile": { "page": "用户页面" }
+  },
+  "dataTypes": {
+    "Crag": {
+      "id": "string",
+      "name": "string",
+      "location": "string",
+      "developmentTime": "string",
+      "description": "string",
+      "approach": "string",
+      "coverImages": "string[]?"
+    },
+    "Route": {
+      "id": "number",
+      "name": "string",
+      "grade": "string (V0-V13 或 ?)",
+      "cragId": "string",
+      "area": "string",
+      "setter": "string?",
+      "FA": "string?",
+      "description": "string?",
+      "image": "string?"
+    }
+  },
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint",
+    "db:seed": "npx tsx scripts/seed.ts development",
+    "db:seed:prod": "npx tsx scripts/seed.ts production"
+  },
+  "designSystem": {
+    "style": "Material 3",
+    "primaryColor": "#667eea",
+    "cssVariables": ["--m3-primary", "--m3-surface", "--m3-on-surface", "--m3-outline"],
+    "animations": ["animate-fade-in-up", "animate-scale-in", "skeleton-shimmer", "scrollbar-hide"]
+  },
+  "documentation": {
+    "aiGuide": "CLAUDE.md",
+    "techOverview": "doc/PROJECT_OVERVIEW.md",
+    "index": "PROJECT_INDEX.md"
+  },
+  "fileCount": {
+    "sourceFiles": 40,
+    "components": 13,
+    "pages": 6
+  }
+}

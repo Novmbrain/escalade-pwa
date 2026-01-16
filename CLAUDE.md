@@ -46,6 +46,7 @@ src/
 │   ├── ui/                # shadcn/ui 组件 (button, card, skeleton)
 │   ├── crag-card.tsx      # 岩场卡片
 │   ├── app-tabbar.tsx     # 底部导航栏 (毛玻璃效果)
+│   ├── filter-chip.tsx    # 筛选芯片组件 (单选/多选)
 │   ├── floating-search.tsx # 浮动搜索按钮
 │   ├── search-overlay.tsx # 搜索覆盖层
 │   ├── offline-indicator.tsx  # 离线状态提示 (顶部横幅)
@@ -60,6 +61,7 @@ src/
     ├── utils.ts           # cn() 工具函数
     ├── tokens.ts          # 设计令牌
     ├── grade-utils.ts     # 难度等级工具
+    ├── filter-constants.ts # 筛选配置常量 (难度分组, URL参数)
     ├── mongodb.ts         # MongoDB 连接层
     └── db/index.ts        # 数据访问层 (CRUD)
 
@@ -175,12 +177,13 @@ interface Route {
 - `@/types` - 类型定义
 - `@/data` - 静态数据
 
-## Animations
+## Animations & Utilities
 
 定义在 `globals.css`:
 - `.animate-fade-in-up` - 淡入上移
 - `.animate-scale-in` - 缩放淡入
 - `.skeleton-shimmer` - 骨架屏闪烁
+- `.scrollbar-hide` - 隐藏滚动条但保留滚动功能
 
 ## Documentation Rules
 

@@ -54,9 +54,14 @@ export default function HomePageClient({ crags, allRoutes }: HomePageClientProps
         {/* PWA 安装提示 */}
         <InstallPrompt />
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {crags.map((crag, index) => (
-            <CragCard key={crag.id} crag={crag} index={index} />
+            <CragCard
+              key={crag.id}
+              crag={crag}
+              routes={allRoutes.filter((r) => r.cragId === crag.id)}
+              index={index}
+            />
           ))}
         </div>
 

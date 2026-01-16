@@ -1,37 +1,104 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMemo, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Search, ChevronRight } from 'lucide-react'
+import { ChevronLeft, Search, ChevronRight, X } from 'lucide-react'
 import { getGradeColor } from '@/lib/tokens'
+import { GRADE_GROUPS, FILTER_PARAMS, getGradesByValues } from '@/lib/filter-constants'
+import { FilterChip, FilterChipGroup } from '@/components/filter-chip'
 import type { Route, Crag } from '@/types'
-
-const gradeGroups = [
-  { label: 'V0-V3', grades: ['V0', 'V1', 'V2', 'V3'] },
-  { label: 'V4-V6', grades: ['V4', 'V5', 'V6'] },
-  { label: 'V7+', grades: ['V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13'] },
-]
 
 interface RouteListClientProps {
   routes: Route[]
-  currentCrag: Crag | null
+  crags: Crag[]
 }
 
-export default function RouteListClient({ routes, currentCrag }: RouteListClientProps) {
+export default function RouteListClient({ routes, crags }: RouteListClientProps) {
   const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedGrades, setSelectedGrades] = useState<string[]>([])
+  const searchParams = useSearchParams()
+
+  // 从 URL 读取筛选状态
+  const selectedCrag = searchParams.get(FILTER_PARAMS.CRAG) || ''
+  const selectedGrades = useMemo(() => {
+    const gradeParam = searchParams.get(FILTER_PARAMS.GRADE)
+    return gradeParam ? gradeParam.split(',') : []
+  }, [searchParams])
+  const searchQuery = searchParams.get(FILTER_PARAMS.QUERY) || ''
+
+  // 更新 URL 参数
+  const updateSearchParams = useCallback(
+    (key: string, value: string | string[] | null) => {
+      const params = new URLSearchParams(searchParams.toString())
+
+      if (value === null || value === '' || (Array.isArray(value) && value.length === 0)) {
+        params.delete(key)
+      } else if (Array.isArray(value)) {
+        params.set(key, value.join(','))
+      } else {
+        params.set(key, value)
+      }
+
+      const queryString = params.toString()
+      router.push(queryString ? `/route?${queryString}` : '/route', { scroll: false })
+    },
+    [router, searchParams]
+  )
+
+  // 处理岩场筛选（单选）
+  const handleCragSelect = useCallback(
+    (cragId: string) => {
+      updateSearchParams(FILTER_PARAMS.CRAG, cragId === selectedCrag ? null : cragId)
+    },
+    [selectedCrag, updateSearchParams]
+  )
+
+  // 处理难度筛选（多选）
+  const handleGradeToggle = useCallback(
+    (gradeValue: string) => {
+      const newGrades = selectedGrades.includes(gradeValue)
+        ? selectedGrades.filter((g) => g !== gradeValue)
+        : [...selectedGrades, gradeValue]
+      updateSearchParams(FILTER_PARAMS.GRADE, newGrades)
+    },
+    [selectedGrades, updateSearchParams]
+  )
+
+  // 处理搜索
+  const handleSearchChange = useCallback(
+    (query: string) => {
+      updateSearchParams(FILTER_PARAMS.QUERY, query || null)
+    },
+    [updateSearchParams]
+  )
+
+  // 清除所有筛选
+  const clearAllFilters = useCallback(() => {
+    router.push('/route', { scroll: false })
+  }, [router])
+
+  // 是否有任何筛选条件
+  const hasFilters = selectedCrag || selectedGrades.length > 0 || searchQuery
+
+  // 获取当前选中岩场名称
+  const currentCragName = useMemo(() => {
+    if (!selectedCrag) return '全部线路'
+    const crag = crags.find((c) => c.id === selectedCrag)
+    return crag?.name || '全部线路'
+  }, [selectedCrag, crags])
 
   // 筛选逻辑
   const filteredRoutes = useMemo(() => {
     let result = routes
 
-    // 难度筛选
+    // 岩场筛选
+    if (selectedCrag) {
+      result = result.filter((r) => r.cragId === selectedCrag)
+    }
+
+    // 难度筛选（多选）
     if (selectedGrades.length > 0) {
-      const allGrades = selectedGrades.flatMap(
-        (label) => gradeGroups.find((g) => g.label === label)?.grades || []
-      )
+      const allGrades = getGradesByValues(selectedGrades)
       result = result.filter((r) => allGrades.includes(r.grade))
     }
 
@@ -41,20 +108,13 @@ export default function RouteListClient({ routes, currentCrag }: RouteListClient
       result = result.filter(
         (r) =>
           r.name.toLowerCase().includes(query) ||
-          r.grade.toLowerCase().includes(query)
+          r.grade.toLowerCase().includes(query) ||
+          r.area?.toLowerCase().includes(query)
       )
     }
 
     return result
-  }, [routes, selectedGrades, searchQuery])
-
-  const toggleGradeFilter = (label: string) => {
-    setSelectedGrades((prev) =>
-      prev.includes(label)
-        ? prev.filter((g) => g !== label)
-        : [...prev, label]
-    )
-  }
+  }, [routes, selectedCrag, selectedGrades, searchQuery])
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-[var(--m3-surface)]">
@@ -68,7 +128,7 @@ export default function RouteListClient({ routes, currentCrag }: RouteListClient
             <ChevronLeft className="w-5 h-5 text-[var(--m3-on-surface)]" />
           </button>
           <h1 className="text-2xl font-bold text-[var(--m3-on-surface)]">
-            {currentCrag?.name || '全部线路'}
+            {currentCragName}
           </h1>
         </div>
 
@@ -79,35 +139,56 @@ export default function RouteListClient({ routes, currentCrag }: RouteListClient
             type="text"
             placeholder="搜索线路名称"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 rounded-full bg-[var(--m3-surface-variant)] text-[var(--m3-on-surface)] placeholder:text-[var(--m3-outline)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--m3-primary)]"
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full h-10 pl-10 pr-10 rounded-full bg-[var(--m3-surface-variant)] text-[var(--m3-on-surface)] placeholder:text-[var(--m3-outline)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--m3-primary)]"
           />
+          {searchQuery && (
+            <button
+              onClick={() => handleSearchChange('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[var(--m3-outline)] flex items-center justify-center"
+            >
+              <X className="w-3 h-3 text-white" />
+            </button>
+          )}
         </div>
 
-        {/* 难度筛选 */}
-        <div className="flex gap-2">
-          {gradeGroups.map((group) => (
-            <button
-              key={group.label}
-              onClick={() => toggleGradeFilter(group.label)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                selectedGrades.includes(group.label)
-                  ? 'bg-[var(--m3-primary)] text-white'
-                  : 'bg-[var(--m3-surface-variant)] text-[var(--m3-on-surface-variant)]'
-              }`}
-            >
-              {group.label}
-            </button>
+        {/* 岩场筛选（第一行） */}
+        <FilterChipGroup className="mb-2">
+          <FilterChip
+            label="全部"
+            selected={!selectedCrag}
+            onClick={() => updateSearchParams(FILTER_PARAMS.CRAG, null)}
+          />
+          {crags.map((crag) => (
+            <FilterChip
+              key={crag.id}
+              label={crag.name}
+              selected={selectedCrag === crag.id}
+              onClick={() => handleCragSelect(crag.id)}
+            />
           ))}
-          {selectedGrades.length > 0 && (
+        </FilterChipGroup>
+
+        {/* 难度筛选（第二行） */}
+        <FilterChipGroup>
+          {GRADE_GROUPS.map((group) => (
+            <FilterChip
+              key={group.value}
+              label={group.label}
+              selected={selectedGrades.includes(group.value)}
+              onClick={() => handleGradeToggle(group.value)}
+              color={group.color}
+            />
+          ))}
+          {hasFilters && (
             <button
-              onClick={() => setSelectedGrades([])}
-              className="px-3 py-1.5 rounded-full text-xs font-medium text-[var(--m3-primary)]"
+              onClick={clearAllFilters}
+              className="px-3 py-1.5 rounded-full text-xs font-medium text-[var(--m3-primary)] whitespace-nowrap flex-shrink-0 hover:bg-[var(--m3-primary-container)] transition-colors"
             >
               清除
             </button>
           )}
-        </div>
+        </FilterChipGroup>
       </header>
 
       {/* 线路列表 */}

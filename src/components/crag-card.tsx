@@ -1,18 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
-import type { Crag } from '@/types'
-import { getRoutesByCragId } from '@/data/routes'
+import Image from 'next/image'
+import { MapPin, Route as RouteIcon } from 'lucide-react'
+import type { Crag, Route } from '@/types'
+import { getCragTheme, getGradeColor } from '@/lib/crag-theme'
 
 interface CragCardProps {
   crag: Crag
+  routes: Route[]
   index?: number
 }
 
-export function CragCard({ crag, index = 0 }: CragCardProps) {
-  const routes = getRoutesByCragId(crag.id)
+export function CragCard({ crag, routes, index = 0 }: CragCardProps) {
   const routeCount = routes.length
+  const theme = getCragTheme(crag.id)
 
   // 计算难度范围
   const grades = routes
@@ -24,37 +26,106 @@ export function CragCard({ crag, index = 0 }: CragCardProps) {
       return numA - numB
     })
 
-  const gradeRange =
-    grades.length > 0
-      ? grades[0] === grades[grades.length - 1]
-        ? grades[0]
-        : `${grades[0]} - ${grades[grades.length - 1]}`
-      : '暂无'
+  const minGrade = grades[0] || 'V0'
+  const maxGrade = grades[grades.length - 1] || minGrade
+  const gradeRange = minGrade === maxGrade ? minGrade : `${minGrade}-${maxGrade}`
+
+  const hasCoverImage = crag.coverImages && crag.coverImages.length > 0
 
   return (
     <Link
       href={`/crag/${crag.id}`}
-      className="flex items-center p-4 bg-white rounded-xl mb-2 shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.98] animate-fade-in-up"
-      style={{ animationDelay: `${index * 50}ms` }}
+      className="group relative block overflow-hidden rounded-2xl
+                 shadow-sm hover:shadow-xl transition-all duration-300
+                 active:scale-[0.98] animate-fade-in-up"
+      style={{ animationDelay: `${index * 80}ms` }}
     >
-      {/* 岩场信息 */}
-      <div className="flex-1 flex flex-col justify-center">
-        <span className="text-lg font-bold text-[var(--m3-on-surface)] mb-1 leading-tight">
-          {crag.name}
-        </span>
-        <div className="flex flex-wrap gap-1">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--m3-primary-container)] text-[var(--m3-on-primary-container)]">
-            {routeCount} 条线路
-          </span>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--m3-surface-variant)] text-[var(--m3-on-surface-variant)]">
-            {gradeRange}
-          </span>
-        </div>
-      </div>
+      {/* 背景层 - 图片或渐变 */}
+      <div className="relative h-44 overflow-hidden">
+        {hasCoverImage ? (
+          // 有封面图时显示图片
+          <Image
+            src={crag.coverImages![0]}
+            alt={crag.name}
+            fill
+            className="object-cover transition-transform duration-500
+                       group-hover:scale-105"
+          />
+        ) : (
+          // 无图片时显示渐变背景 + 装饰元素
+          <div
+            className="absolute inset-0 transition-transform duration-500
+                       group-hover:scale-105"
+            style={{ background: theme.gradient }}
+          >
+            {/* 装饰性图标 */}
+            <span
+              className="absolute right-4 top-4 text-5xl opacity-30
+                         transition-all duration-300 group-hover:opacity-50
+                         group-hover:scale-110"
+            >
+              {theme.icon}
+            </span>
 
-      {/* 箭头指示 */}
-      <div className="flex-shrink-0 flex items-center justify-center w-6">
-        <ChevronRight className="w-5 h-5 text-[var(--m3-outline)]" />
+            {/* 纹理叠加层 */}
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+              }}
+            />
+          </div>
+        )}
+
+        {/* 底部渐变遮罩 */}
+        <div
+          className="absolute inset-0 bg-gradient-to-t
+                     from-black/70 via-black/20 to-transparent"
+        />
+
+        {/* 内容层 */}
+        <div className="absolute inset-0 flex flex-col justify-end p-4">
+          {/* 岩场名称 */}
+          <h3
+            className="text-2xl font-bold text-white tracking-wide
+                       drop-shadow-lg"
+          >
+            {crag.name}
+          </h3>
+
+          {/* 信息行 */}
+          <div className="flex items-center gap-3 mt-2">
+            {/* 线路数量 */}
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1
+                         bg-white/20 backdrop-blur-sm rounded-full"
+            >
+              <RouteIcon className="w-3.5 h-3.5 text-white" />
+              <span className="text-sm text-white font-medium">
+                {routeCount} 条线路
+              </span>
+            </div>
+
+            {/* 难度范围 */}
+            <div
+              className="px-2.5 py-1 rounded-full text-sm font-bold text-white"
+              style={{
+                backgroundColor: getGradeColor(minGrade),
+                boxShadow: `0 2px 8px ${getGradeColor(minGrade)}40`,
+              }}
+            >
+              {gradeRange}
+            </div>
+          </div>
+
+          {/* 位置信息 (可选) */}
+          {crag.location && (
+            <div className="flex items-center gap-1 mt-2 text-white/70">
+              <MapPin className="w-3 h-3" />
+              <span className="text-xs truncate">{crag.location}</span>
+            </div>
+          )}
+        </div>
       </div>
     </Link>
   )
