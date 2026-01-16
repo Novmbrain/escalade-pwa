@@ -2,12 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Mountain, User } from 'lucide-react'
+import { Home, Mountain, Settings } from 'lucide-react'
 
 const TAB_ITEMS = [
   { name: 'home', path: '/', icon: Home, label: '首页' },
   { name: 'routes', path: '/route', icon: Mountain, label: '线路' },
-  { name: 'profile', path: '/profile', icon: User, label: '我的' },
+  { name: 'settings', path: '/profile', icon: Settings, label: '设置' },
 ]
 
 export function AppTabbar() {

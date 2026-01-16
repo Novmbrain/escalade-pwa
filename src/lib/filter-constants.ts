@@ -3,42 +3,26 @@
  * 用于岩场和难度分类筛选功能
  */
 
+import { getGradeColor } from '@/lib/tokens'
+
 /**
- * 难度分组配置
- * 每个分组包含标签、URL 参数值、对应的具体难度等级和颜色
+ * 所有可用的 V 难度等级
+ * 直接使用 V 等级作为筛选选项，更符合攀岩者习惯
  */
-export const GRADE_GROUPS = [
-  {
-    label: '入门',
-    value: 'V0-V2',
-    grades: ['V0', 'V1', 'V2'],
-    color: '#4CAF50'
-  },
-  {
-    label: '初级',
-    value: 'V3-V4',
-    grades: ['V3', 'V4'],
-    color: '#8BC34A'
-  },
-  {
-    label: '中级',
-    value: 'V5-V6',
-    grades: ['V5', 'V6'],
-    color: '#FFC107'
-  },
-  {
-    label: '高级',
-    value: 'V7-V8',
-    grades: ['V7', 'V8'],
-    color: '#FF9800'
-  },
-  {
-    label: '精英',
-    value: 'V9+',
-    grades: ['V9', 'V10', 'V11', 'V12', 'V13'],
-    color: '#F44336'
-  },
+export const V_GRADES = [
+  'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13'
 ] as const
+
+/**
+ * 难度筛选配置
+ * 每个等级直接对应一个筛选选项
+ */
+export const GRADE_GROUPS = V_GRADES.map(grade => ({
+  label: grade,
+  value: grade,
+  grades: [grade],
+  color: getGradeColor(grade)
+}))
 
 /**
  * 根据 URL 参数值获取对应的难度等级数组

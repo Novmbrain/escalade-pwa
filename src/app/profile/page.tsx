@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, User, Info, LogIn, Palette } from 'lucide-react'
+import { ChevronLeft, Info, Palette, Mountain } from 'lucide-react'
 import { AppTabbar } from '@/components/app-tabbar'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 
@@ -9,7 +9,6 @@ export default function ProfilePage() {
   const router = useRouter()
 
   const menuItems = [
-    { icon: LogIn, label: '登录 / 注册', description: '登录后可发表评论' },
     { icon: Info, label: '关于', description: '关于罗源野抱 TOPO' },
   ]
 
@@ -32,11 +31,11 @@ export default function ProfilePage() {
             <ChevronLeft className="w-5 h-5" style={{ color: 'var(--theme-on-surface)' }} />
           </button>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--theme-on-surface)' }}>
-            我的
+            设置
           </h1>
         </div>
 
-        {/* 用户信息卡片 */}
+        {/* 应用信息卡片 */}
         <div
           className="p-4"
           style={{
@@ -48,16 +47,16 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--theme-surface-variant)' }}
+              style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))' }}
             >
-              <User className="w-8 h-8" style={{ color: 'var(--theme-on-surface-variant)' }} />
+              <Mountain className="w-8 h-8" style={{ color: 'var(--theme-primary)' }} />
             </div>
             <div>
               <p className="text-lg font-semibold" style={{ color: 'var(--theme-on-surface)' }}>
-                未登录
+                罗源野抱 TOPO
               </p>
               <p className="text-sm" style={{ color: 'var(--theme-on-surface-variant)' }}>
-                点击登录以解锁更多功能
+                福州罗源攀岩线路分享
               </p>
             </div>
           </div>
