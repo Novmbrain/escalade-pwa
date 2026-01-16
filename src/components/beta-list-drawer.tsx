@@ -32,8 +32,20 @@ export function BetaListDrawer({
   routeId, // 预留给未来功能使用（如 API 调用）
   onAddBeta,
 }: BetaListDrawerProps) {
+  /**
+   * 打开外部链接
+   * 在 PWA standalone 模式下，window.open 可能被拦截或 URL 被截断
+   * 使用隐藏的 <a> 标签点击是最可靠的跨平台方案
+   */
   const handleLinkClick = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer')
+    // 创建临时 <a> 标签并模拟点击
+    const link = document.createElement('a')
+    link.href = url
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   return (
