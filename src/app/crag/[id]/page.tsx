@@ -1,15 +1,17 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getCragById, getAllCrags } from '@/data/crags'
-import { getRoutesByCragId } from '@/data/routes'
+import { getCragById, getAllCrags, getRoutesByCragId } from '@/lib/db'
 import CragDetailClient from './crag-detail-client'
+
+// ISR: 每小时重新验证一次
+export const revalidate = 3600
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 export async function generateStaticParams() {
-  const crags = getAllCrags()
+  const crags = await getAllCrags()
   return crags.map((crag) => ({
     id: crag.id,
   }))
@@ -17,7 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
-  const crag = getCragById(id)
+  const crag = await getCragById(id)
 
   if (!crag) {
     return {
@@ -38,8 +40,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CragDetailPage({ params }: PageProps) {
   const { id } = await params
-  const crag = getCragById(id)
-  const routes = getRoutesByCragId(id)
+  const crag = await getCragById(id)
+  const routes = await getRoutesByCragId(id)
 
   if (!crag) {
     notFound()

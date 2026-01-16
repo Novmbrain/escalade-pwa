@@ -1,15 +1,17 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getRouteById, getAllRoutes } from '@/data/routes'
-import { getCragById } from '@/data/crags'
+import { getRouteById, getAllRoutes, getCragById } from '@/lib/db'
 import RouteDetailClient from './route-detail-client'
+
+// ISR: 每小时重新验证一次
+export const revalidate = 3600
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
 export async function generateStaticParams() {
-  const routes = getAllRoutes()
+  const routes = await getAllRoutes()
   return routes.map((route) => ({
     id: String(route.id),
   }))
@@ -17,7 +19,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
-  const route = getRouteById(parseInt(id))
+  const route = await getRouteById(parseInt(id))
 
   if (!route) {
     return {
@@ -25,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 
-  const crag = getCragById(route.cragId)
+  const crag = await getCragById(route.cragId)
   const description = route.description || `${route.name} (${route.grade}) - ${crag?.name || route.area}`
 
   return {
@@ -41,13 +43,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function RouteDetailPage({ params }: PageProps) {
   const { id } = await params
-  const route = getRouteById(parseInt(id))
+  const route = await getRouteById(parseInt(id))
 
   if (!route) {
     notFound()
   }
 
-  const crag = getCragById(route.cragId)
+  const crag = await getCragById(route.cragId)
 
   return <RouteDetailClient route={route} crag={crag ?? null} />
 }

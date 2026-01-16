@@ -13,16 +13,19 @@ Node.js >= 20.9.0，使用 `nvm use` 自动切换
 ## Commands
 
 ```bash
-npm run dev      # 开发服务器 (Turbopack)
-npm run build    # 生产构建 (webpack)
-npm run start    # 生产服务器
-npm run lint     # ESLint
+npm run dev           # 开发服务器 (Turbopack)
+npm run build         # 生产构建 (webpack)
+npm run start         # 生产服务器
+npm run lint          # ESLint
+npm run db:seed       # 数据迁移 (开发环境)
+npm run db:seed:prod  # 数据迁移 (生产环境)
 npx shadcn@latest add <component>  # 添加 UI 组件
 ```
 
 ## Tech Stack
 
-- **Framework:** Next.js 16.1.2 + App Router
+- **Framework:** Next.js 16.1.2 + App Router + ISR
+- **Database:** MongoDB Atlas (原生驱动)
 - **Styling:** Tailwind CSS v4 + shadcn/ui (new-york style)
 - **PWA:** Serwist (service worker at `src/app/sw.ts`)
 - **Icons:** lucide-react
@@ -42,20 +45,29 @@ src/
 ├── components/
 │   ├── ui/                # shadcn/ui 组件 (button, card, skeleton)
 │   ├── crag-card.tsx      # 岩场卡片
-│   ├── app-tabbar.tsx     # 底部导航栏
+│   ├── app-tabbar.tsx     # 底部导航栏 (毛玻璃效果)
 │   ├── floating-search.tsx # 浮动搜索按钮
 │   ├── search-overlay.tsx # 搜索覆盖层
 │   ├── offline-indicator.tsx  # 离线状态提示 (顶部横幅)
-│   └── sw-update-prompt.tsx   # SW 更新提示 (底部弹窗)
+│   ├── sw-update-prompt.tsx   # SW 更新提示 (底部弹窗)
+│   └── install-prompt.tsx # PWA 安装提示 (首页卡片)
 ├── data/
-│   ├── crags.ts           # 岩场数据 (静态)
-│   └── routes.ts          # 线路数据 (静态)
+│   ├── crags.ts           # 岩场数据 (静态备份)
+│   └── routes.ts          # 线路数据 (静态备份)
 ├── types/index.ts         # TypeScript 类型定义
 ├── hooks/                 # 自定义 Hooks
 └── lib/
     ├── utils.ts           # cn() 工具函数
     ├── tokens.ts          # 设计令牌
-    └── grade-utils.ts     # 难度等级工具
+    ├── grade-utils.ts     # 难度等级工具
+    ├── mongodb.ts         # MongoDB 连接层
+    └── db/index.ts        # 数据访问层 (CRUD)
+
+scripts/
+└── seed.ts                # 数据库迁移脚本
+
+doc/
+└── PROJECT_OVERVIEW.md    # 项目技术文档 (详细)
 ```
 
 ## Core Data Types
@@ -169,3 +181,24 @@ interface Route {
 - `.animate-fade-in-up` - 淡入上移
 - `.animate-scale-in` - 缩放淡入
 - `.skeleton-shimmer` - 骨架屏闪烁
+
+## Documentation Rules
+
+当完成以下类型的修改时，必须同步更新文档：
+
+### 需要更新 CLAUDE.md 的情况：
+- 添加/删除/重命名文件或目录
+- 修改技术栈（依赖、框架版本）
+- 添加新的组件模式或设计规范
+- 修改项目命令或配置
+
+### 需要更新 doc/PROJECT_OVERVIEW.md 的情况：
+- 重大架构变更（如添加数据库、API 层）
+- 新增核心功能模块
+- 修改数据流或状态管理方式
+- 添加新的技术决策
+
+### 文档更新原则：
+1. 保持 CLAUDE.md 简洁（供 AI 快速参考）
+2. 保持 PROJECT_OVERVIEW.md 详细（供开发者学习）
+3. 每次任务结束前检查是否需要更新文档
