@@ -65,7 +65,8 @@ export type BetaPlatform = 'xiaohongshu' | 'douyin' | 'bilibili' | 'youtube' | '
 export interface BetaLink {
   id: string
   platform: BetaPlatform
-  url: string
+  url: string              // 解析后的最终 URL
+  originalUrl?: string     // 原始短链接（如果经过解析）
   title?: string
   author?: string
   // 提交者身体数据（可选）

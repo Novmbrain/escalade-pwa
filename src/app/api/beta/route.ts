@@ -4,6 +4,39 @@ import { detectPlatformFromUrl } from '@/lib/beta-constants'
 import type { Document } from 'mongodb'
 
 /**
+ * 解析短链接，获取最终 URL
+ * 通过跟踪重定向获取最终目标地址
+ */
+async function resolveShortUrl(url: string): Promise<string> {
+  // 识别常见短链接域名
+  const shortUrlDomains = ['xhslink.com', 'v.douyin.com', 'b23.tv', 'youtu.be']
+  const urlObj = new URL(url)
+
+  // 如果不是短链接，直接返回原 URL
+  if (!shortUrlDomains.some(domain => urlObj.hostname.includes(domain))) {
+    return url
+  }
+
+  try {
+    // 使用 HEAD 请求跟踪重定向（不下载内容）
+    const response = await fetch(url, {
+      method: 'HEAD',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(5000), // 5秒超时
+    })
+
+    // 返回最终 URL
+    const finalUrl = response.url
+    console.log(`[resolveShortUrl] ${url} -> ${finalUrl}`)
+    return finalUrl
+  } catch (error) {
+    // 解析失败时返回原 URL
+    console.warn(`[resolveShortUrl] Failed to resolve ${url}:`, error)
+    return url
+  }
+}
+
+/**
  * POST /api/beta
  * 创建新的 Beta 链接
  */
@@ -58,14 +91,18 @@ export async function POST(request: NextRequest) {
     // 生成唯一 ID
     const betaId = `beta_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 
-    // 自动检测平台
+    // 尝试解析短链接获取最终 URL（避免重定向过多问题）
+    const resolvedUrl = await resolveShortUrl(url)
+
+    // 自动检测平台（使用原始 URL 检测，因为解析后的 URL 可能是 App 内部链接）
     const platform = detectPlatformFromUrl(url)
 
     // 构建 BetaLink 对象
     const newBeta = {
       id: betaId,
       platform,
-      url,
+      url: resolvedUrl,  // 存储解析后的 URL
+      originalUrl: url !== resolvedUrl ? url : undefined,  // 保留原始短链接（如果不同）
       ...(climberHeight && { climberHeight }),
       ...(climberReach && { climberReach }),
       createdAt: new Date(),
