@@ -1,6 +1,7 @@
 'use client'
 
-import { ExternalLink, BookHeart, Music2, Play, Youtube, Ruler, ArrowUpFromLine, Plus } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ExternalLink, BookHeart, Music2, Play, Youtube, Ruler, ArrowUpFromLine, Plus, Loader2 } from 'lucide-react'
 import { Drawer } from '@/components/ui/drawer'
 import { BETA_PLATFORMS } from '@/lib/beta-constants'
 import type { BetaLink, BetaPlatform } from '@/types'
@@ -8,7 +9,7 @@ import type { BetaLink, BetaPlatform } from '@/types'
 interface BetaListDrawerProps {
   isOpen: boolean
   onClose: () => void
-  betaLinks: BetaLink[]
+  betaLinks: BetaLink[]  // 来自 props 的数据（可能是 ISR 缓存）
   routeName: string
   routeId: number
   onAddBeta?: () => void
@@ -26,18 +27,57 @@ const PLATFORM_ICONS: Record<BetaPlatform, React.ComponentType<{ className?: str
 export function BetaListDrawer({
   isOpen,
   onClose,
-  betaLinks,
+  betaLinks: propsBetaLinks,
   routeName,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  routeId, // 预留给未来功能使用（如 API 调用）
+  routeId,
   onAddBeta,
 }: BetaListDrawerProps) {
+  // 从 API 获取最新数据，绕过 ISR 缓存
+  const [apiBetaLinks, setApiBetaLinks] = useState<BetaLink[] | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  // 使用 API 数据（如果有）或 props 数据
+  const betaLinks = apiBetaLinks ?? propsBetaLinks
+
+  // 抽屉打开时从 API 获取最新数据
+  useEffect(() => {
+    if (isOpen && routeId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(true)
+      fetch(`/api/beta?routeId=${routeId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.betaLinks) {
+            // 调试：打印 API 返回的 URL
+            console.log('[BetaListDrawer] API betaLinks:', JSON.stringify(data.betaLinks, null, 2))
+            setApiBetaLinks(data.betaLinks)
+          }
+        })
+        .catch(err => {
+          console.error('[BetaListDrawer] Failed to fetch:', err)
+        })
+        .finally(() => {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setLoading(false)
+        })
+    }
+  }, [isOpen, routeId])
+
+  // 抽屉关闭时清除 API 数据（下次打开重新获取）
+  useEffect(() => {
+    if (!isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setApiBetaLinks(null)
+    }
+  }, [isOpen])
+
   /**
    * 打开外部链接
-   * 在 PWA standalone 模式下，window.open 可能被拦截或 URL 被截断
-   * 使用隐藏的 <a> 标签点击是最可靠的跨平台方案
+   * 调试：打印实际点击的 URL
    */
   const handleLinkClick = (url: string) => {
+    console.log('[BetaListDrawer] Opening URL:', url)
+
     // 创建临时 <a> 标签并模拟点击
     const link = document.createElement('a')
     link.href = url
@@ -74,7 +114,20 @@ export function BetaListDrawer({
           </button>
         )}
 
-        {betaLinks.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8">
+            <Loader2
+              className="w-8 h-8 mx-auto animate-spin"
+              style={{ color: 'var(--theme-primary)' }}
+            />
+            <p
+              className="text-sm mt-2"
+              style={{ color: 'var(--theme-on-surface-variant)' }}
+            >
+              加载中...
+            </p>
+          </div>
+        ) : betaLinks.length === 0 ? (
           <div className="text-center py-8">
             <div
               className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
