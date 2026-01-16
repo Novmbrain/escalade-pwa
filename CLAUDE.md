@@ -44,12 +44,18 @@ src/
 │   ├── route/[id]/        # 线路详情页
 │   └── profile/           # 用户页面
 ├── components/
-│   ├── ui/                # shadcn/ui 组件 (button, card, skeleton)
+│   ├── ui/                # shadcn/ui 组件
+│   │   ├── button.tsx, card.tsx, skeleton.tsx  # 基础组件
+│   │   ├── drawer.tsx     # 通用抽屉组件 (手势关闭)
+│   │   └── image-viewer.tsx # 全屏图片查看器 (双指缩放)
 │   ├── theme-provider.tsx # 主题上下文提供者
 │   ├── theme-switcher.tsx # 主题切换器组件
 │   ├── crag-card.tsx      # 岩场卡片
 │   ├── app-tabbar.tsx     # 底部导航栏 (毛玻璃效果)
 │   ├── filter-chip.tsx    # 筛选芯片组件 (单选/多选)
+│   ├── filter-drawer.tsx  # 筛选面板抽屉
+│   ├── route-detail-drawer.tsx  # 线路详情抽屉
+│   ├── beta-list-drawer.tsx     # Beta 视频列表抽屉
 │   ├── floating-search.tsx # 浮动搜索按钮
 │   ├── search-overlay.tsx # 搜索覆盖层
 │   ├── offline-indicator.tsx  # 离线状态提示 (顶部横幅)
@@ -60,11 +66,13 @@ src/
 │   └── routes.ts          # 线路数据 (静态备份)
 ├── types/index.ts         # TypeScript 类型定义
 ├── hooks/                 # 自定义 Hooks
+│   └── use-drawer.ts      # 抽屉状态管理 Hook
 └── lib/
     ├── utils.ts           # cn() 工具函数
     ├── tokens.ts          # 设计令牌
     ├── grade-utils.ts     # 难度等级工具
     ├── filter-constants.ts # 筛选配置常量 (难度分组, URL参数)
+    ├── beta-constants.ts   # Beta 平台配置 (小红书, 抖音等)
     ├── mongodb.ts         # MongoDB 连接层
     ├── db/index.ts        # 数据访问层 (CRUD)
     └── themes/            # 主题系统
@@ -102,6 +110,18 @@ interface Route {
   FA?: string             // 首攀者
   description?: string
   image?: string
+  betaLinks?: BetaLink[]  // Beta 视频链接
+}
+
+// Beta 视频链接
+type BetaPlatform = 'xiaohongshu' | 'douyin' | 'bilibili' | 'youtube' | 'other'
+
+interface BetaLink {
+  id: string
+  platform: BetaPlatform
+  url: string
+  title?: string
+  author?: string
 }
 ```
 
@@ -262,6 +282,42 @@ setTheme('outdoor') // 或 'minimal'
 </div>
 ```
 
+### 抽屉组件模式 (参考 drawer.tsx)
+
+```tsx
+import { Drawer } from '@/components/ui/drawer'
+import { ImageViewer } from '@/components/ui/image-viewer'
+
+// 抽屉高度选项: 'quarter' | 'half' | 'three-quarter' | 'full'
+<Drawer
+  isOpen={isOpen}
+  onClose={() => setIsOpen(false)}
+  height="three-quarter"
+  showHandle          // 显示拖拽手柄
+  title="抽屉标题"
+  showCloseButton     // 显示关闭按钮
+>
+  <div className="px-4 pb-4">
+    抽屉内容
+  </div>
+</Drawer>
+
+// 图片查看器 (支持双指缩放)
+<ImageViewer
+  isOpen={imageOpen}
+  onClose={() => setImageOpen(false)}
+  src="/path/to/image.jpg"
+  alt="图片描述"
+/>
+```
+
+**抽屉交互特性:**
+- 下滑手势关闭 (阈值 100px)
+- 背景遮罩点击关闭
+- ESC 键关闭
+- Body 滚动锁定
+- iOS 安全区域适配
+
 ## PWA Configuration
 
 - Service Worker: `src/app/sw.ts` (Serwist)
@@ -282,7 +338,9 @@ setTheme('outdoor') // 或 'minimal'
 
 定义在 `globals.css`:
 - `.animate-fade-in-up` - 淡入上移
+- `.animate-fade-in` - 淡入
 - `.animate-scale-in` - 缩放淡入
+- `.animate-drawer-in` - 抽屉底部滑入
 - `.skeleton-shimmer` - 骨架屏闪烁
 - `.scrollbar-hide` - 隐藏滚动条但保留滚动功能
 

@@ -9,6 +9,7 @@ export interface Route {
   FA?: string
   description?: string
   image?: string
+  betaLinks?: BetaLink[] // Beta 视频链接
 }
 
 // 岩场数据类型
@@ -56,3 +57,15 @@ export const GRADE_LEVELS = [
 ] as const
 
 export type GradeLevel = typeof GRADE_LEVELS[number]
+
+// Beta 视频平台类型
+export type BetaPlatform = 'xiaohongshu' | 'douyin' | 'bilibili' | 'youtube' | 'other'
+
+// Beta 链接数据类型
+export interface BetaLink {
+  id: string
+  platform: BetaPlatform
+  url: string
+  title?: string
+  author?: string
+}
