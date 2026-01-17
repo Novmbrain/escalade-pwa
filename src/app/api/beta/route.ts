@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDatabase } from '@/lib/mongodb'
-import { detectPlatformFromUrl, isXiaohongshuUrl, extractXiaohongshuNoteId } from '@/lib/beta-constants'
+import { detectPlatformFromUrl, isXiaohongshuUrl, extractXiaohongshuNoteId, extractUrlFromText } from '@/lib/beta-constants'
 import { checkRateLimit, BETA_RATE_LIMIT_CONFIG } from '@/lib/rate-limit'
 import type { Document } from 'mongodb'
 
@@ -97,22 +97,25 @@ export async function POST(request: NextRequest) {
 
     // ==================== 2. 请求验证 ====================
     const body = await request.json()
-    const { routeId, url, climberHeight, climberReach } = body
+    const { routeId, url: rawUrl, climberHeight, climberReach } = body
 
     // 验证必填字段
-    if (!routeId || !url) {
+    if (!routeId || !rawUrl) {
       return NextResponse.json(
         { error: '缺少必填字段: routeId 和 url' },
         { status: 400 }
       )
     }
 
+    // 尝试从文本中提取 URL（容错处理：用户可能粘贴了带描述的文本）
+    const url = extractUrlFromText(rawUrl) || rawUrl
+
     // 验证 URL 格式
     try {
       new URL(url)
     } catch {
       return NextResponse.json(
-        { error: '无效的 URL 格式' },
+        { error: '无法识别有效的链接，请检查粘贴内容' },
         { status: 400 }
       )
     }

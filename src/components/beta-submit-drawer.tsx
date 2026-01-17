@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { Link2, Ruler, ArrowUpFromLine, Check, AlertCircle } from 'lucide-react'
 import { Drawer } from '@/components/ui/drawer'
-import { detectPlatformFromUrl, isXiaohongshuUrl, BETA_PLATFORMS } from '@/lib/beta-constants'
+import { detectPlatformFromUrl, isXiaohongshuUrl, extractUrlFromText, BETA_PLATFORMS } from '@/lib/beta-constants'
 
 interface BetaSubmitDrawerProps {
   isOpen: boolean
@@ -30,6 +30,19 @@ export function BetaSubmitDrawer({
   // 检测平台
   const detectedPlatform = url ? detectPlatformFromUrl(url) : null
   const platformInfo = detectedPlatform ? BETA_PLATFORMS[detectedPlatform] : null
+
+  // 处理用户输入：从粘贴的文本中智能提取 URL
+  const handleUrlChange = useCallback((input: string) => {
+    // 尝试从文本中提取 URL（处理小红书分享带的额外文字）
+    const extracted = extractUrlFromText(input)
+    if (extracted) {
+      // 如果提取到 URL，使用提取的 URL
+      setUrl(extracted)
+    } else {
+      // 否则保留原始输入（可能用户还在输入中）
+      setUrl(input)
+    }
+  }, [])
 
   // 验证 URL
   const isValidUrl = useCallback((input: string) => {
@@ -161,10 +174,10 @@ export function BetaSubmitDrawer({
               style={{ color: 'var(--theme-on-surface-variant)' }}
             />
             <input
-              type="url"
+              type="text"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="粘贴小红书视频链接..."
+              onChange={(e) => handleUrlChange(e.target.value)}
+              placeholder="直接粘贴小红书分享内容..."
               className="w-full pl-10 pr-4 py-3 text-sm outline-none"
               style={{
                 backgroundColor: 'var(--theme-surface-variant)',
