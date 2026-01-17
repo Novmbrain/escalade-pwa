@@ -1,115 +1,256 @@
 'use client'
 
-import { Info, Palette, Mountain } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import Image from 'next/image'
+import { Palette, Heart, Copy, Check, ExternalLink } from 'lucide-react'
 import { AppTabbar } from '@/components/app-tabbar'
 import { ThemeSwitcher } from '@/components/theme-switcher'
+import { ImageViewer } from '@/components/ui/image-viewer'
+
+// 作者信息常量
+const AUTHOR = {
+  name: '傅文杰',
+  bio: '爱攀岩的程序猿 🧗‍♂️',
+  avatarUrl: 'https://topo-image-1305178596.cos.ap-guangzhou.myqcloud.com/avatar.jpg',
+  donateUrl: 'https://topo-image-1305178596.cos.ap-guangzhou.myqcloud.com/donate.png',
+  wechat: 'Novmbrain',
+  xiaohongshu: 'WindOfBretagne',
+}
 
 export default function ProfilePage() {
-  const menuItems = [
-    { icon: Info, label: '关于', description: '关于罗源野抱 TOPO' },
-  ]
+  // 图片查看器状态
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerImage, setViewerImage] = useState('')
+  const [viewerAlt, setViewerAlt] = useState('')
+
+  // 复制状态
+  const [copiedField, setCopiedField] = useState<string | null>(null)
+
+  // 头像加载状态
+  const [avatarLoaded, setAvatarLoaded] = useState(false)
+
+  // 打开图片查看器
+  const openViewer = useCallback((src: string, alt: string) => {
+    setViewerImage(src)
+    setViewerAlt(alt)
+    setViewerOpen(true)
+  }, [])
+
+  // 复制到剪贴板
+  const copyToClipboard = useCallback(async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 2000)
+    } catch {
+      // 降级方案
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.opacity = '0'
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 2000)
+    }
+  }, [])
 
   return (
-    <div
-      className="flex flex-col min-h-screen"
-      style={{
-        backgroundColor: 'var(--theme-surface)',
-        transition: 'var(--theme-transition)',
-      }}
-    >
-      {/* 头部 */}
-      <header className="pt-12 px-4 pb-6">
-        <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--theme-on-surface)' }}>
-          设置
-        </h1>
-
-        {/* 应用信息卡片 */}
-        <div
-          className="p-4"
+    <>
+      <div
+        className="flex flex-col min-h-screen"
+        style={{
+          backgroundColor: 'var(--theme-surface)',
+          transition: 'var(--theme-transition)',
+        }}
+      >
+        {/* 作者形象区域 - 酷炫渐变背景 */}
+        <header
+          className="relative pt-12 pb-8 px-4 overflow-hidden"
           style={{
-            backgroundColor: 'var(--theme-surface)',
-            borderRadius: 'var(--theme-radius-xl)',
-            boxShadow: 'var(--theme-shadow-sm)',
+            background: 'linear-gradient(135deg, var(--theme-primary) 0%, color-mix(in srgb, var(--theme-primary) 60%, #000) 100%)',
           }}
         >
-          <div className="flex items-center gap-4">
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))' }}
+          {/* 装饰性背景圆圈 */}
+          <div
+            className="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-10"
+            style={{ backgroundColor: 'white' }}
+          />
+          <div
+            className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-10"
+            style={{ backgroundColor: 'white' }}
+          />
+
+          {/* 作者头像 */}
+          <div className="flex justify-center mb-6">
+            <button
+              onClick={() => openViewer(AUTHOR.avatarUrl, '作者头像')}
+              className="relative w-32 h-32 rounded-2xl overflow-hidden transition-transform active:scale-95"
+              style={{
+                boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                border: '3px solid rgba(255,255,255,0.3)',
+              }}
             >
-              <Mountain className="w-8 h-8" style={{ color: 'var(--theme-primary)' }} />
-            </div>
-            <div>
-              <p className="text-lg font-semibold" style={{ color: 'var(--theme-on-surface)' }}>
-                罗源野抱 TOPO
-              </p>
-              <p className="text-sm" style={{ color: 'var(--theme-on-surface-variant)' }}>
-                福州罗源攀岩线路分享
-              </p>
-            </div>
+              {/* 加载骨架 */}
+              {!avatarLoaded && (
+                <div className="absolute inset-0 skeleton-shimmer" />
+              )}
+              <Image
+                src={AUTHOR.avatarUrl}
+                alt="作者头像"
+                fill
+                className={`object-cover transition-opacity duration-300 ${avatarLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setAvatarLoaded(true)}
+                sizes="128px"
+              />
+            </button>
           </div>
-        </div>
-      </header>
 
-      {/* 内容区 */}
-      <main className="flex-1 px-4 pb-20">
-        {/* 外观设置区块 */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Palette className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
-            <span className="text-sm font-semibold" style={{ color: 'var(--theme-on-surface)' }}>
-              外观设置
-            </span>
+          {/* 作者名称和简介 */}
+          <div className="text-center relative z-10">
+            <h1
+              className="text-2xl font-bold mb-1"
+              style={{ color: 'var(--theme-on-primary)' }}
+            >
+              {AUTHOR.name}
+            </h1>
+            <p
+              className="text-sm opacity-80"
+              style={{ color: 'var(--theme-on-primary)' }}
+            >
+              {AUTHOR.bio}
+            </p>
           </div>
-          <ThemeSwitcher />
-        </div>
+        </header>
 
-        {/* 菜单列表 */}
-        <div className="space-y-2">
-          {menuItems.map((item, index) => {
-            const Icon = item.icon
-            return (
-              <button
-                key={index}
-                className="w-full flex items-center gap-4 p-4 transition-all active:scale-[0.98]"
-                style={{
-                  backgroundColor: 'var(--theme-surface)',
-                  borderRadius: 'var(--theme-radius-xl)',
-                  boxShadow: 'var(--theme-shadow-sm)',
-                }}
+        {/* 联系方式卡片 */}
+        <div className="px-4 -mt-4 relative z-10">
+          <div
+            className="p-4 space-y-3"
+            style={{
+              backgroundColor: 'var(--theme-surface)',
+              borderRadius: 'var(--theme-radius-xl)',
+              boxShadow: 'var(--theme-shadow-lg)',
+            }}
+          >
+            {/* 微信 */}
+            <button
+              onClick={() => copyToClipboard(AUTHOR.wechat, 'wechat')}
+              className="w-full flex items-center gap-3 p-3 transition-all active:scale-[0.98]"
+              style={{
+                backgroundColor: 'var(--theme-surface-variant)',
+                borderRadius: 'var(--theme-radius-lg)',
+              }}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: '#07c160' }}
               >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))' }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="text-base font-medium" style={{ color: 'var(--theme-on-surface)' }}>
-                    {item.label}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
-                    {item.description}
-                  </p>
-                </div>
-              </button>
-            )
-          })}
+                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 01.213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 00.167-.054l1.903-1.114a.864.864 0 01.717-.098 10.16 10.16 0 002.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 01-1.162 1.178A1.17 1.17 0 014.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 01-1.162 1.178 1.17 1.17 0 01-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 01.598.082l1.584.926a.272.272 0 00.14.045c.134 0 .24-.11.24-.245 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 01-.023-.156.49.49 0 01.201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 01-.969.983.976.976 0 01-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 01-.969.983.976.976 0 01-.969-.983c0-.542.434-.982.969-.982z"/>
+                </svg>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-on-surface)' }}>
+                  微信
+                </p>
+                <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
+                  {AUTHOR.wechat}
+                </p>
+              </div>
+              {copiedField === 'wechat' ? (
+                <Check className="w-5 h-5" style={{ color: 'var(--theme-success)' }} />
+              ) : (
+                <Copy className="w-5 h-5" style={{ color: 'var(--theme-on-surface-variant)' }} />
+              )}
+            </button>
+
+            {/* 小红书 */}
+            <button
+              onClick={() => copyToClipboard(AUTHOR.xiaohongshu, 'xiaohongshu')}
+              className="w-full flex items-center gap-3 p-3 transition-all active:scale-[0.98]"
+              style={{
+                backgroundColor: 'var(--theme-surface-variant)',
+                borderRadius: 'var(--theme-radius-lg)',
+              }}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: '#FF2442' }}
+              >
+                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium" style={{ color: 'var(--theme-on-surface)' }}>
+                  小红书
+                </p>
+                <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
+                  {AUTHOR.xiaohongshu}
+                </p>
+              </div>
+              {copiedField === 'xiaohongshu' ? (
+                <Check className="w-5 h-5" style={{ color: 'var(--theme-success)' }} />
+              ) : (
+                <Copy className="w-5 h-5" style={{ color: 'var(--theme-on-surface-variant)' }} />
+              )}
+            </button>
+
+            {/* 赞赏按钮 */}
+            <button
+              onClick={() => openViewer(AUTHOR.donateUrl, '赞赏码')}
+              className="w-full flex items-center justify-center gap-2 p-4 mt-2 transition-all active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)',
+                borderRadius: 'var(--theme-radius-xl)',
+                color: 'white',
+                boxShadow: '0 4px 15px rgba(238, 90, 90, 0.4)',
+              }}
+            >
+              <Heart className="w-5 h-5" fill="white" />
+              <span className="font-medium">给小傅买杯咖啡 ☕️</span>
+            </button>
+          </div>
         </div>
 
-        {/* 版本信息 */}
-        <div className="mt-8 text-center">
-          <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
-            罗源野抱 TOPO v1.0.0
-          </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--theme-on-surface-variant)' }}>
-            福州罗源攀岩线路分享
-          </p>
-        </div>
-      </main>
+        {/* 内容区 */}
+        <main className="flex-1 px-4 pt-6 pb-24">
+          {/* 外观设置区块 */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Palette className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+              <span className="text-sm font-semibold" style={{ color: 'var(--theme-on-surface)' }}>
+                外观设置
+              </span>
+            </div>
+            <ThemeSwitcher />
+          </div>
 
-      {/* 底部导航栏 */}
-      <AppTabbar />
-    </div>
+          {/* 版本信息 */}
+          <div className="mt-8 text-center">
+            <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
+              罗源野抱 TOPO v1.0.0
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--theme-on-surface-variant)' }}>
+              Made with ❤️ by 傅文杰
+            </p>
+          </div>
+        </main>
+
+        {/* 底部导航栏 */}
+        <AppTabbar />
+      </div>
+
+      {/* 图片查看器 */}
+      <ImageViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        src={viewerImage}
+        alt={viewerAlt}
+      />
+    </>
   )
 }
