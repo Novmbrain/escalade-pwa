@@ -123,7 +123,8 @@ export function useRouteSearch(
     const results = limit > 0 ? matchedRoutes.slice(0, limit) : matchedRoutes
 
     // 移除 matchInfo 属性，返回纯 Route 数组
-    return results.map(({ matchInfo: _matchInfo, ...route }) => route)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    return results.map(({ matchInfo, ...route }) => route)
   }, [routes, searchQuery, limit, getMatchInfo])
 
   /**

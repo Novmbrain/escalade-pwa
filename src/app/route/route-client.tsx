@@ -20,7 +20,7 @@ interface RouteListClientProps {
 export default function RouteListClient({ routes, crags }: RouteListClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
 
   // 抽屉状态
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null)
@@ -75,13 +75,6 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
     [updateSearchParams]
   )
 
-  // 清除所有筛选
-  const clearAllFilters = useCallback(() => {
-    startTransition(() => {
-      router.replace('/route', { scroll: false })
-    })
-  }, [router, startTransition])
-
   // 处理筛选抽屉应用
   const handleFilterApply = useCallback(
     (crag: string, grades: string[]) => {
@@ -112,9 +105,6 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
     setSelectedRoute(route)
     setIsDetailDrawerOpen(true)
   }, [])
-
-  // 是否有任何筛选条件
-  const hasFilters = selectedCrag || selectedGrades.length > 0 || searchQuery
 
   // 活跃筛选数量（用于显示徽章）
   const activeFilterCount = useMemo(() => {

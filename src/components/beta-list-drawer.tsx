@@ -53,7 +53,6 @@ export function BetaListDrawer({
           console.error('[BetaListDrawer] Failed to fetch:', err)
         })
         .finally(() => {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setLoading(false)
         })
     }
