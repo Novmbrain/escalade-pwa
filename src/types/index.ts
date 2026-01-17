@@ -65,6 +65,7 @@ export type BetaPlatform = 'xiaohongshu'
 export interface BetaLink {
   id: string
   platform: BetaPlatform
+  noteId: string           // 小红书笔记 ID（用于去重）
   url: string              // 解析后的最终 URL
   originalUrl?: string     // 原始短链接（如果经过解析）
   title?: string

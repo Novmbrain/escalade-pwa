@@ -71,6 +71,7 @@ src/
     ├── utils.ts           # cn() 工具函数
     ├── tokens.ts          # 设计令牌
     ├── grade-utils.ts     # 难度等级工具
+    ├── rate-limit.ts      # 内存级 Rate Limiting (IP 限流)
     ├── filter-constants.ts # 筛选配置常量 (难度分组, URL参数)
     ├── beta-constants.ts   # Beta 平台配置 (小红书, 抖音等)
     ├── mongodb.ts         # MongoDB 连接层
@@ -119,9 +120,13 @@ type BetaPlatform = 'xiaohongshu'
 interface BetaLink {
   id: string
   platform: BetaPlatform
+  noteId: string          // 小红书笔记 ID（用于去重）
   url: string
+  originalUrl?: string    // 原始短链接
   title?: string
   author?: string
+  climberHeight?: number  // 身高 (cm)
+  climberReach?: number   // 臂长 (cm)
 }
 ```
 

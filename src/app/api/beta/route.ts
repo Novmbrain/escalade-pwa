@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDatabase } from '@/lib/mongodb'
-import { detectPlatformFromUrl, isXiaohongshuUrl } from '@/lib/beta-constants'
+import { detectPlatformFromUrl, isXiaohongshuUrl, extractXiaohongshuNoteId } from '@/lib/beta-constants'
+import { checkRateLimit, BETA_RATE_LIMIT_CONFIG } from '@/lib/rate-limit'
 import type { Document } from 'mongodb'
+
+/**
+ * 获取客户端 IP 地址
+ */
+function getClientIp(request: NextRequest): string {
+  // Vercel/Cloudflare 等代理会设置这些头
+  const forwarded = request.headers.get('x-forwarded-for')
+  if (forwarded) {
+    // 取第一个 IP（原始客户端）
+    return forwarded.split(',')[0].trim()
+  }
+
+  const realIp = request.headers.get('x-real-ip')
+  if (realIp) {
+    return realIp.trim()
+  }
+
+  // 本地开发环境
+  return '127.0.0.1'
+}
 
 /**
  * 解析小红书短链接，获取最终 URL
@@ -46,9 +67,35 @@ async function resolveShortUrl(url: string): Promise<string> {
 /**
  * POST /api/beta
  * 创建新的 Beta 链接
+ *
+ * 改进功能：
+ * - IP 级别 Rate Limiting（每分钟 5 次）
+ * - 基于笔记 ID 的去重（静默成功）
  */
 export async function POST(request: NextRequest) {
   try {
+    // ==================== 1. Rate Limiting ====================
+    const clientIp = getClientIp(request)
+    const rateLimitResult = checkRateLimit(`beta:${clientIp}`, BETA_RATE_LIMIT_CONFIG)
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          error: '请求过于频繁，请稍后再试',
+          retryAfter: rateLimitResult.retryAfter,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimitResult.retryAfter),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(rateLimitResult.resetTime),
+          },
+        }
+      )
+    }
+
+    // ==================== 2. 请求验证 ====================
     const body = await request.json()
     const { routeId, url, climberHeight, climberReach } = body
 
@@ -70,7 +117,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 验证是否为小红书链接（服务器端验证）
+    // 验证是否为小红书链接
     if (!isXiaohongshuUrl(url)) {
       return NextResponse.json(
         { error: '目前仅支持小红书链接' },
@@ -92,10 +139,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // ==================== 3. 解析短链接 & 提取笔记 ID ====================
+    // 先解析短链接获取完整 URL
+    const resolvedUrl = await resolveShortUrl(url)
+
+    // 从解析后的 URL 提取笔记 ID
+    const noteId = extractXiaohongshuNoteId(resolvedUrl)
+
+    if (!noteId) {
+      return NextResponse.json(
+        { error: '无法识别小红书笔记链接，请确保链接正确' },
+        { status: 400 }
+      )
+    }
+
+    // ==================== 4. 去重检查 ====================
     const db = await getDatabase()
 
-    // 检查线路是否存在
-    const route = await db.collection('routes').findOne({ _id: routeId as unknown as Document['_id'] })
+    // 检查线路是否存在，并获取现有的 betaLinks
+    const route = await db.collection('routes').findOne(
+      { _id: routeId as unknown as Document['_id'] },
+      { projection: { betaLinks: 1 } }
+    )
+
     if (!route) {
       return NextResponse.json(
         { error: '线路不存在' },
@@ -103,27 +169,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 生成唯一 ID
+    // 检查是否已存在相同的笔记 ID
+    const existingBetas = route.betaLinks || []
+    const isDuplicate = existingBetas.some(
+      (beta: { noteId?: string }) => beta.noteId === noteId
+    )
+
+    if (isDuplicate) {
+      // 静默成功：返回成功但不存储
+      console.log(`[Beta] 重复提交被忽略: routeId=${routeId}, noteId=${noteId}`)
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Beta 分享成功',
+          duplicate: true, // 前端可选择性使用此标记
+        },
+        { status: 200 }
+      )
+    }
+
+    // ==================== 5. 存储新 Beta ====================
     const betaId = `beta_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-
-    // 尝试解析短链接获取最终 URL（避免重定向过多问题）
-    const resolvedUrl = await resolveShortUrl(url)
-
-    // 自动检测平台（使用原始 URL 检测，因为解析后的 URL 可能是 App 内部链接）
     const platform = detectPlatformFromUrl(url)
 
-    // 构建 BetaLink 对象
     const newBeta = {
       id: betaId,
       platform,
-      url: resolvedUrl,  // 存储解析后的 URL
-      originalUrl: url !== resolvedUrl ? url : undefined,  // 保留原始短链接（如果不同）
+      noteId, // 存储笔记 ID 用于去重
+      url: resolvedUrl,
+      originalUrl: url !== resolvedUrl ? url : undefined,
       ...(climberHeight && { climberHeight }),
       ...(climberReach && { climberReach }),
       createdAt: new Date(),
     }
 
-    // 使用 $push 将新 Beta 添加到线路的 betaLinks 数组
     const result = await db.collection('routes').updateOne(
       { _id: routeId as unknown as Document['_id'] },
       {
@@ -145,7 +224,13 @@ export async function POST(request: NextRequest) {
         beta: newBeta,
         message: 'Beta 分享成功'
       },
-      { status: 201 }
+      {
+        status: 201,
+        headers: {
+          'X-RateLimit-Remaining': String(rateLimitResult.remaining),
+          'X-RateLimit-Reset': String(rateLimitResult.resetTime),
+        },
+      }
     )
   } catch (error) {
     console.error('创建 Beta 失败:', error)
