@@ -10,6 +10,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Node.js >= 20.9.0，使用 `nvm use` 自动切换
 
+## Quick Start
+
+```bash
+# 1. 切换 Node 版本
+nvm use
+
+# 2. 安装依赖
+npm install
+
+# 3. 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local 填入 MongoDB 连接字符串
+
+# 4. 启动开发服务器
+npm run dev
+```
+
+## Environment Variables
+
+复制 `.env.example` 为 `.env.local`，配置以下变量：
+
+| 变量 | 必需 | 说明 |
+|------|------|------|
+| `MONGODB_URI` | ✅ | MongoDB Atlas 连接字符串 |
+
+> 生产环境变量在 Vercel 项目设置中配置
+
 ## Commands
 
 ```bash
@@ -130,7 +157,7 @@ interface Crag {
 interface Route {
   id: number
   name: string            // 线路名称
-  grade: string           // V0-V13 或 "？"
+  grade: string           // V0-V13 或 "？" (Hueco V-Scale 难度等级)
   cragId: string          // 关联岩场
   area: string            // 区域
   setter?: string
@@ -156,12 +183,14 @@ interface BetaLink {
 }
 ```
 
-## Design System (Material 3)
+## Design System
 
-使用 CSS 变量，定义在 `globals.css`:
+使用 CSS 变量，定义在 `globals.css`。
+
+> ⚠️ **重要**: `--m3-*` 变量为旧版兼容，**新代码请使用 `--theme-*` 变量**（见下方 Theme System）
 
 ```css
-/* 主要颜色 (旧版兼容) */
+/* 旧版变量 (仅兼容用途，勿在新代码中使用) */
 --m3-primary: #667eea
 --m3-on-primary: #ffffff
 --m3-surface: #fefbff
@@ -356,6 +385,15 @@ import { ImageViewer } from '@/components/ui/image-viewer'
 - COS 图片缓存 30 天，最多 200 张
 - 图片域名: `topo-image-1305178596.cos.ap-guangzhou.myqcloud.com`
 
+## API Routes
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/beta?routeId=123` | 获取线路的 Beta 视频列表 |
+| `POST` | `/api/beta` | 提交 Beta 视频 (Rate Limited) |
+
+> 岩场/线路数据通过 Server Components 直接从 MongoDB 获取，无需 API 路由
+
 ## Import Aliases
 
 - `@/components` - React 组件
@@ -377,10 +415,15 @@ import { ImageViewer } from '@/components/ui/image-viewer'
 
 ## Testing
 
-### 测试文件命名
+### 测试文件约定
 
-- `*.test.ts` / `*.test.tsx` - Vitest 单元/组件测试
-- `*.ct.tsx` - Playwright 组件测试 (需要真实浏览器)
+| 类型 | 命名 | 位置 |
+|------|------|------|
+| 单元测试 | `*.test.ts` | 与源文件同目录 |
+| 组件测试 | `*.test.tsx` | 与组件同目录 |
+| 浏览器测试 | `*.ct.tsx` | 与组件同目录 |
+
+示例：`src/lib/utils.ts` → `src/lib/utils.test.ts`
 
 ### 测试分层
 
@@ -389,6 +432,12 @@ import { ImageViewer } from '@/components/ui/image-viewer'
 | 单元测试 | Vitest | 工具函数、纯逻辑 |
 | 组件测试 | Vitest + Testing Library | 组件渲染、基础交互 |
 | 浏览器测试 | Playwright | 复杂交互 (拖拽、手势) |
+
+### 覆盖率目标
+
+当前覆盖率约 **34%**，主要覆盖核心工具函数和关键组件。
+
+> 查看详细报告：`npm run test:coverage` 后打开 `coverage/index.html`
 
 ### 已测试模块
 
