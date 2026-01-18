@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDatabase } from '@/lib/mongodb'
 import { detectPlatformFromUrl, isXiaohongshuUrl, extractXiaohongshuNoteId, extractUrlFromText } from '@/lib/beta-constants'
 import { checkRateLimit, BETA_RATE_LIMIT_CONFIG } from '@/lib/rate-limit'
+import { HTTP_CACHE } from '@/lib/cache-config'
 import type { Document } from 'mongodb'
 
 /**
@@ -273,10 +274,17 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      betaLinks: route.betaLinks || [],
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        betaLinks: route.betaLinks || [],
+      },
+      {
+        headers: {
+          'Cache-Control': `public, max-age=${HTTP_CACHE.BETA_MAX_AGE}`,
+        },
+      }
+    )
   } catch (error) {
     console.error('获取 Beta 失败:', error)
     return NextResponse.json(

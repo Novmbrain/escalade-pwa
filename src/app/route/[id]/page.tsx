@@ -2,9 +2,10 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getRouteById, getAllRoutes, getCragById } from '@/lib/db'
 import RouteDetailClient from './route-detail-client'
+import { ISR_REVALIDATE } from '@/lib/cache-config'
 
-// ISR: 每小时重新验证一次
-export const revalidate = 3600
+// ISR: 每月重新验证一次
+export const revalidate = ISR_REVALIDATE.DETAIL
 
 interface PageProps {
   params: Promise<{ id: string }>

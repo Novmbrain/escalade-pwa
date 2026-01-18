@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
+import { IMAGE_CACHE } from "./src/lib/cache-config";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -19,7 +20,7 @@ const nextConfig: NextConfig = {
       },
     ],
     formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 60 * 60 * 24 * 7, // 7 天缓存
+    minimumCacheTTL: IMAGE_CACHE.MINIMUM_TTL,
   },
   async headers() {
     return [

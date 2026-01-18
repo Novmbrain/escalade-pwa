@@ -2,9 +2,10 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getCragById, getAllCrags, getRoutesByCragId } from '@/lib/db'
 import CragDetailClient from './crag-detail-client'
+import { ISR_REVALIDATE } from '@/lib/cache-config'
 
-// ISR: 每小时重新验证一次
-export const revalidate = 3600
+// ISR: 每月重新验证一次
+export const revalidate = ISR_REVALIDATE.DETAIL
 
 interface PageProps {
   params: Promise<{ id: string }>

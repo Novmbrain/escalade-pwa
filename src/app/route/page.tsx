@@ -1,8 +1,9 @@
 import { getAllRoutes, getAllCrags } from '@/lib/db'
 import RouteListClient from './route-client'
+import { ISR_REVALIDATE } from '@/lib/cache-config'
 
-// ISR: 每小时重新验证一次
-export const revalidate = 3600
+// ISR: 每月重新验证一次
+export const revalidate = ISR_REVALIDATE.PAGE
 
 /**
  * 线路列表页面

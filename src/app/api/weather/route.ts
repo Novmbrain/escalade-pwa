@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { WeatherData, WeatherLive, WeatherForecast } from '@/types'
 import { evaluateClimbingCondition } from '@/lib/weather-utils'
-import { WEATHER_CACHE_TTL, LUOYUAN_DEFAULT_COORDS } from '@/lib/weather-constants'
+import { LUOYUAN_DEFAULT_COORDS } from '@/lib/weather-constants'
+import { API_CACHE, HTTP_CACHE } from '@/lib/cache-config'
 
 // ==================== 类型定义 ====================
 
@@ -73,7 +74,7 @@ function getCachedWeather(adcode: string): WeatherData | null {
 function setCachedWeather(adcode: string, data: WeatherData): void {
   weatherCache.set(adcode, {
     data,
-    expireAt: Date.now() + WEATHER_CACHE_TTL,
+    expireAt: Date.now() + API_CACHE.WEATHER_TTL,
   })
 }
 
@@ -213,7 +214,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cached, {
         headers: {
           'X-Cache': 'HIT',
-          'Cache-Control': 'public, max-age=3600',
+          'Cache-Control': `public, max-age=${HTTP_CACHE.WEATHER_MAX_AGE}`,
         },
       })
     }
@@ -280,7 +281,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(weatherData, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, max-age=3600',
+        'Cache-Control': `public, max-age=${HTTP_CACHE.WEATHER_MAX_AGE}`,
       },
     })
   } catch (error) {

@@ -122,6 +122,7 @@ src/
     ├── utils.ts           # cn() 工具函数
     ├── tokens.ts          # 设计令牌
     ├── grade-utils.ts     # 难度等级工具
+    ├── cache-config.ts    # 统一缓存 TTL 配置 (ISR, SW, API, HTTP)
     ├── rate-limit.ts      # 内存级 Rate Limiting (IP 限流)
     ├── filter-constants.ts # 筛选配置常量 (难度分组, URL参数)
     ├── beta-constants.ts   # Beta 平台配置 (小红书, 抖音等)
