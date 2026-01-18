@@ -46,4 +46,15 @@ export const FILTER_PARAMS = {
   CRAG: 'crag',
   GRADE: 'grade',
   QUERY: 'q',
+  SORT: 'sort',
 } as const
+
+/**
+ * 排序方向类型
+ */
+export type SortDirection = 'asc' | 'desc'
+
+/**
+ * 默认排序方向（从简单到难）
+ */
+export const DEFAULT_SORT_DIRECTION: SortDirection = 'asc'

@@ -2,9 +2,10 @@
 
 import { useMemo, useCallback, useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Search, ChevronRight, X, SlidersHorizontal } from 'lucide-react'
+import { Search, ChevronRight, X, SlidersHorizontal, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { getGradeColor } from '@/lib/tokens'
-import { FILTER_PARAMS, getGradesByValues } from '@/lib/filter-constants'
+import { FILTER_PARAMS, getGradesByValues, DEFAULT_SORT_DIRECTION, type SortDirection } from '@/lib/filter-constants'
+import { compareGrades } from '@/lib/grade-utils'
 import { FilterChip, FilterChipGroup } from '@/components/filter-chip'
 import { GradeRangeSelector } from '@/components/grade-range-selector'
 import { RouteDetailDrawer } from '@/components/route-detail-drawer'
@@ -34,6 +35,7 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
     return gradeParam ? gradeParam.split(',') : []
   }, [searchParams])
   const searchQuery = searchParams.get(FILTER_PARAMS.QUERY) || ''
+  const sortDirection = (searchParams.get(FILTER_PARAMS.SORT) as SortDirection) || DEFAULT_SORT_DIRECTION
 
   // 更新 URL 参数（使用 startTransition 实现平滑更新，避免闪烁）
   const updateSearchParams = useCallback(
@@ -74,6 +76,12 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
     },
     [updateSearchParams]
   )
+
+  // 切换排序方向
+  const toggleSortDirection = useCallback(() => {
+    const newDirection: SortDirection = sortDirection === 'asc' ? 'desc' : 'asc'
+    updateSearchParams(FILTER_PARAMS.SORT, newDirection)
+  }, [sortDirection, updateSearchParams])
 
   // 处理筛选抽屉应用
   const handleFilterApply = useCallback(
@@ -153,8 +161,14 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
       )
     }
 
+    // 按难度排序
+    result = [...result].sort((a, b) => {
+      const comparison = compareGrades(a.grade, b.grade)
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+
     return result
-  }, [routes, selectedCrag, selectedGrades, searchQuery])
+  }, [routes, selectedCrag, selectedGrades, searchQuery, sortDirection])
 
   return (
     <>
@@ -249,9 +263,34 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
 
         {/* 线路列表 */}
         <main className="flex-1 overflow-y-auto px-4 pb-28">
-          <p className="text-xs mb-2" style={{ color: 'var(--theme-on-surface-variant)' }}>
-            共 {filteredRoutes.length} 条线路
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
+              共 {filteredRoutes.length} 条线路
+            </p>
+            {/* 排序切换按钮 */}
+            <button
+              onClick={toggleSortDirection}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors"
+              style={{
+                color: 'var(--theme-on-surface-variant)',
+                backgroundColor: 'var(--theme-surface-variant)',
+                borderRadius: 'var(--theme-radius-full)',
+              }}
+              aria-label={sortDirection === 'asc' ? '当前：从简单到难，点击反转' : '当前：从难到简单，点击反转'}
+            >
+              {sortDirection === 'asc' ? (
+                <>
+                  <ArrowUp className="w-3 h-3" />
+                  <span>简单→难</span>
+                </>
+              ) : (
+                <>
+                  <ArrowDown className="w-3 h-3" />
+                  <span>难→简单</span>
+                </>
+              )}
+            </button>
+          </div>
 
           <div className="space-y-2">
             {filteredRoutes.map((route, index) => (
