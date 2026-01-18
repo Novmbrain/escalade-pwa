@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { MapPin, FileText, Car, ChevronLeft, Play, Map } from 'lucide-react'
+import { FileText, Car, ChevronLeft, Play, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getCragCoverUrl } from '@/lib/constants'
 import AMapContainer from '@/components/amap-container'
@@ -155,15 +155,6 @@ export default function CragDetailClient({ crag, routes }: CragDetailClientProps
             </span>
           </div>
         </div>
-
-        {/* 位置卡片 */}
-        <InfoCard
-          icon={<MapPin className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />}
-          iconBg="color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))"
-          title="位置"
-          content={crag.location}
-          delay={0}
-        />
 
         {/* 岩场介绍卡片 */}
         <InfoCard
