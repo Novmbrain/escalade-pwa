@@ -10,15 +10,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Node.js >= 20.9.0，使用 `nvm use` 自动切换
 
+## Quick Start
+
+```bash
+# 1. 切换 Node 版本
+nvm use
+
+# 2. 安装依赖
+npm install
+
+# 3. 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local 填入 MongoDB 连接字符串
+
+# 4. 启动开发服务器
+npm run dev
+```
+
+## Environment Variables
+
+复制 `.env.example` 为 `.env.local`，配置以下变量：
+
+| 变量 | 必需 | 说明 |
+|------|------|------|
+| `MONGODB_URI` | ✅ | MongoDB Atlas 连接字符串 |
+
+> 生产环境变量在 Vercel 项目设置中配置
+
 ## Commands
 
 ```bash
+# 开发
 npm run dev           # 开发服务器 (Turbopack)
 npm run build         # 生产构建 (webpack)
 npm run start         # 生产服务器
 npm run lint          # ESLint
+
+# 测试
+npm run test          # Vitest watch 模式
+npm run test:run      # Vitest 单次运行
+npm run test:coverage # Vitest + 覆盖率报告
+npm run test:ct       # Playwright 组件测试
+npm run test:ct:ui    # Playwright 显示浏览器
+npm run test:ct:debug # Playwright 慢动作调试
+
+# 数据库
 npm run db:seed       # 数据迁移 (开发环境)
 npm run db:seed:prod  # 数据迁移 (生产环境)
+
+# UI
 npx shadcn@latest add <component>  # 添加 UI 组件
 ```
 
@@ -29,6 +69,8 @@ npx shadcn@latest add <component>  # 添加 UI 组件
 - **Styling:** Tailwind CSS v4 + shadcn/ui (new-york style)
 - **Theming:** next-themes (双主题: 极简/户外)
 - **PWA:** Serwist (service worker at `src/app/sw.ts`)
+- **Testing:** Vitest + Testing Library + Playwright (组件测试)
+- **CI/CD:** GitHub Actions (质量检查) + Vercel (部署)
 - **Icons:** lucide-react
 - **Fonts:** Plus Jakarta Sans (sans) + JetBrains Mono (mono)
 
@@ -66,7 +108,10 @@ src/
 │   └── routes.ts          # 线路数据 (静态备份)
 ├── types/index.ts         # TypeScript 类型定义
 ├── hooks/                 # 自定义 Hooks
-│   └── use-drawer.ts      # 抽屉状态管理 Hook
+│   └── use-route-search.ts # 线路搜索 Hook (首页搜索用)
+├── test/                  # 测试工具
+│   ├── setup.tsx          # Vitest 全局设置 (mocks)
+│   └── utils.tsx          # 测试辅助函数
 └── lib/
     ├── utils.ts           # cn() 工具函数
     ├── tokens.ts          # 设计令牌
@@ -84,8 +129,16 @@ src/
 scripts/
 └── seed.ts                # 数据库迁移脚本
 
+playwright/                # Playwright 组件测试配置
+├── index.html             # 测试入口 HTML
+└── index.tsx              # 测试入口 (加载全局样式)
+
 doc/
 └── PROJECT_OVERVIEW.md    # 项目技术文档 (详细)
+
+# 根目录配置文件
+vitest.config.ts           # Vitest 测试配置
+playwright-ct.config.ts    # Playwright 组件测试配置
 ```
 
 ## Core Data Types
@@ -104,7 +157,7 @@ interface Crag {
 interface Route {
   id: number
   name: string            // 线路名称
-  grade: string           // V0-V13 或 "？"
+  grade: string           // V0-V13 或 "？" (Hueco V-Scale 难度等级)
   cragId: string          // 关联岩场
   area: string            // 区域
   setter?: string
@@ -130,40 +183,18 @@ interface BetaLink {
 }
 ```
 
-## Design System (Material 3)
+## Design System
 
-使用 CSS 变量，定义在 `globals.css`:
+使用 CSS 变量，定义在 `globals.css`，通过 `data-theme` 属性控制主题切换。
 
-```css
-/* 主要颜色 (旧版兼容) */
---m3-primary: #667eea
---m3-on-primary: #ffffff
---m3-surface: #fefbff
---m3-surface-variant: #e4e1ec
---m3-on-surface: #1c1b1f
---m3-on-surface-variant: #46464f
---m3-outline: #777680
-
-/* 间距 */
---space-xs/sm/md/lg/xl: 0.25-1.5rem
-
-/* 圆角 */
---radius-xs/sm/md/lg/xl: 0.25-1.75rem
-
-/* 阴影 */
---elevation-1 到 --elevation-5
-```
-
-## Theme System (双主题)
-
-支持两种主题切换，通过 `data-theme` 属性控制：
-
-### 主题变量 (使用 `--theme-*` 前缀)
+### 主题变量 (`--theme-*`)
 
 ```css
 /* 颜色 */
 --theme-primary          /* 主色 */
 --theme-on-primary       /* 主色上的文字 */
+--theme-primary-container /* 浅色容器背景 */
+--theme-on-primary-container /* 容器内文字 */
 --theme-surface          /* 表面色/背景色 */
 --theme-surface-variant  /* 表面变体色 */
 --theme-on-surface       /* 表面上的文字 */
@@ -182,6 +213,20 @@ interface BetaLink {
 
 /* 过渡动画 */
 --theme-transition
+```
+
+### 通用令牌 (非主题相关)
+
+```css
+/* 间距 */
+--space-xs/sm/md/lg/xl: 0.25-1.5rem
+--space-page: 1rem
+
+/* 基础圆角 */
+--radius-xs/sm/md/lg/xl: 0.25-1.75rem
+
+/* 阴影 (非主题感知) */
+--elevation-1 到 --elevation-5
 ```
 
 ### 主题定义
@@ -330,6 +375,15 @@ import { ImageViewer } from '@/components/ui/image-viewer'
 - COS 图片缓存 30 天，最多 200 张
 - 图片域名: `topo-image-1305178596.cos.ap-guangzhou.myqcloud.com`
 
+## API Routes
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/beta?routeId=123` | 获取线路的 Beta 视频列表 |
+| `POST` | `/api/beta` | 提交 Beta 视频 (Rate Limited) |
+
+> 岩场/线路数据通过 Server Components 直接从 MongoDB 获取，无需 API 路由
+
 ## Import Aliases
 
 - `@/components` - React 组件
@@ -348,6 +402,111 @@ import { ImageViewer } from '@/components/ui/image-viewer'
 - `.animate-drawer-in` - 抽屉底部滑入
 - `.skeleton-shimmer` - 骨架屏闪烁
 - `.scrollbar-hide` - 隐藏滚动条但保留滚动功能
+
+## Testing
+
+### 测试文件约定
+
+| 类型 | 命名 | 位置 |
+|------|------|------|
+| 单元测试 | `*.test.ts` | 与源文件同目录 |
+| 组件测试 | `*.test.tsx` | 与组件同目录 |
+| 浏览器测试 | `*.ct.tsx` | 与组件同目录 |
+
+示例：`src/lib/utils.ts` → `src/lib/utils.test.ts`
+
+### 测试分层
+
+| 层级 | 工具 | 用途 |
+|------|------|------|
+| 单元测试 | Vitest | 工具函数、纯逻辑 |
+| 组件测试 | Vitest + Testing Library | 组件渲染、基础交互 |
+| 浏览器测试 | Playwright | 复杂交互 (拖拽、手势) |
+
+### 覆盖率目标
+
+当前覆盖率约 **34%**，主要覆盖核心工具函数和关键组件。
+
+> 查看详细报告：`npm run test:coverage` 后打开 `coverage/index.html`
+
+### 已测试模块
+
+**Lib (工具函数)**:
+- `grade-utils.ts`, `tokens.ts`, `filter-constants.ts`
+- `beta-constants.ts`, `rate-limit.ts`, `crag-theme.ts`
+- `themes/index.ts`, `utils.ts`
+
+**Components (组件)**:
+- `filter-chip.tsx`, `grade-range-selector.tsx`
+- `drawer.tsx`, `crag-card.tsx`, `search-overlay.tsx`
+
+### CI 流水线
+
+GitHub Actions 自动运行 (push/PR 到 main/dev):
+1. 🔍 ESLint - 代码规范
+2. 📘 TypeScript - 类型检查
+3. 🧪 Unit Tests - Vitest + 覆盖率
+4. 🎭 Playwright - 组件测试
+
+## Git Workflow
+
+### Issue-First 开发流程
+
+```
+Issue 创建 → Feature 分支 → PR (dev→main) → 合并 → Issue 自动关闭
+```
+
+### 分支策略
+
+| 分支 | 用途 |
+|------|------|
+| `main` | 生产分支，受保护，必须通过 PR 合并 |
+| `dev` | 开发分支，日常开发 |
+| `feature/issue-{N}-{desc}` | 功能分支，从 dev 创建 |
+
+### 完整工作流
+
+```bash
+# 1. 创建 Issue
+gh issue create --title "[Feature] 功能描述" --body "..."
+
+# 2. 创建 feature 分支
+git checkout dev && git pull
+git checkout -b feature/issue-42-add-favorites
+
+# 3. 开发并提交
+git add . && git commit -m "feat: add user favorites"
+git push origin feature/issue-42-add-favorites
+
+# 4. 创建 PR (关联 Issue)
+gh pr create --base main --title "feat: add favorites" \
+  --body "Closes #42"
+
+# 5. CI 通过后合并 (rebase 策略)
+gh pr merge --rebase
+```
+
+### Branch Protection (main)
+
+- ✅ 必须通过 CI (ESLint, TypeScript, Unit Tests, Playwright)
+- ✅ 必须通过 PR 合并
+- ✅ 禁止 force push
+- ❌ 不要求 code review (个人项目)
+
+### GitHub 模板文件
+
+| 文件 | 作用 |
+|------|------|
+| `.github/ISSUE_TEMPLATE/feature.md` | Feature 请求模板 |
+| `.github/ISSUE_TEMPLATE/bug.md` | Bug 报告模板 |
+| `.github/PULL_REQUEST_TEMPLATE.md` | PR 模板 (含 Issue 关联) |
+
+### Issue 关联关键词
+
+在 PR 描述中使用以下关键词自动关联 Issue：
+- `Closes #123` - 合并后关闭 Issue
+- `Fixes #123` - 合并后关闭 Issue
+- `Resolves #123` - 合并后关闭 Issue
 
 ## Documentation Rules
 

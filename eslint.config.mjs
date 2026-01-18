@@ -18,6 +18,10 @@ const eslintConfig = defineConfig([
     ".claude/**",
     // Test coverage reports
     "coverage/**",
+    // Playwright cache and reports
+    "playwright/.cache/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 
