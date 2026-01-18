@@ -448,6 +448,66 @@ GitHub Actions 自动运行 (push/PR 到 main/dev):
 3. 🧪 Unit Tests - Vitest + 覆盖率
 4. 🎭 Playwright - 组件测试
 
+## Git Workflow
+
+### Issue-First 开发流程
+
+```
+Issue 创建 → Feature 分支 → PR (dev→main) → 合并 → Issue 自动关闭
+```
+
+### 分支策略
+
+| 分支 | 用途 |
+|------|------|
+| `main` | 生产分支，受保护，必须通过 PR 合并 |
+| `dev` | 开发分支，日常开发 |
+| `feature/issue-{N}-{desc}` | 功能分支，从 dev 创建 |
+
+### 完整工作流
+
+```bash
+# 1. 创建 Issue
+gh issue create --title "[Feature] 功能描述" --body "..."
+
+# 2. 创建 feature 分支
+git checkout dev && git pull
+git checkout -b feature/issue-42-add-favorites
+
+# 3. 开发并提交
+git add . && git commit -m "feat: add user favorites"
+git push origin feature/issue-42-add-favorites
+
+# 4. 创建 PR (关联 Issue)
+gh pr create --base main --title "feat: add favorites" \
+  --body "Closes #42"
+
+# 5. CI 通过后合并 (rebase 策略)
+gh pr merge --rebase
+```
+
+### Branch Protection (main)
+
+- ✅ 必须通过 CI (ESLint, TypeScript, Unit Tests, Playwright)
+- ✅ 必须通过 PR 合并
+- ✅ 禁止 force push
+- ❌ 不要求 code review (个人项目)
+
+### GitHub 模板文件
+
+| 文件 | 作用 |
+|------|------|
+| `.github/ISSUE_TEMPLATE/feature.md` | Feature 请求模板 |
+| `.github/ISSUE_TEMPLATE/bug.md` | Bug 报告模板 |
+| `.github/PULL_REQUEST_TEMPLATE.md` | PR 模板 (含 Issue 关联) |
+
+### Issue 关联关键词
+
+在 PR 描述中使用以下关键词自动关联 Issue：
+- `Closes #123` - 合并后关闭 Issue
+- `Fixes #123` - 合并后关闭 Issue
+- `Resolves #123` - 合并后关闭 Issue
+
 ## Documentation Rules
 
 当完成以下类型的修改时，必须同步更新文档：
