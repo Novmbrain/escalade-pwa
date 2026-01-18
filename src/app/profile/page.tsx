@@ -161,7 +161,7 @@ export default function ProfilePage() {
       <Drawer
         isOpen={authorDrawerOpen}
         onClose={() => setAuthorDrawerOpen(false)}
-        height="half"
+        height="auto"
         showHandle
       >
         <div className="px-4 pb-6">

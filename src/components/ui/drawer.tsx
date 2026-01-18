@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
-export type DrawerHeight = 'quarter' | 'half' | 'three-quarter' | 'full'
+export type DrawerHeight = 'auto' | 'quarter' | 'half' | 'three-quarter' | 'full'
 
 interface DrawerProps {
   isOpen: boolean
@@ -16,6 +16,7 @@ interface DrawerProps {
 }
 
 const HEIGHT_MAP: Record<DrawerHeight, string> = {
+  auto: 'auto',
   quarter: '25vh',
   half: '50vh',
   'three-quarter': '75vh',
