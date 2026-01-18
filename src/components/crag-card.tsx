@@ -48,6 +48,8 @@ export function CragCard({ crag, routes = [], index = 0 }: CragCardProps) {
             src={crag.coverImages![0]}
             alt={crag.name}
             fill
+            priority={index < 2}
+            sizes="100vw"
             className="object-cover transition-transform duration-500
                        group-hover:scale-105"
           />

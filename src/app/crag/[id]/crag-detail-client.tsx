@@ -67,6 +67,8 @@ export default function CragDetailClient({ crag, routes }: CragDetailClientProps
                   src={src}
                   alt={`${crag.name} ${idx + 1}`}
                   fill
+                  priority={idx === 0}
+                  sizes="100vw"
                   className="object-cover"
                 />
               </div>
