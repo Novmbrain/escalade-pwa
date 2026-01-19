@@ -9,7 +9,7 @@ interface FloatingSearchProps {
 
 export function FloatingSearch({
   onClick,
-  placeholder = '搜索线路名称',
+  placeholder = '搜索线路，支持拼音如 yts',
 }: FloatingSearchProps) {
   return (
     <div className="fixed bottom-20 left-4 right-4 z-40">
