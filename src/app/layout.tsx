@@ -58,9 +58,22 @@ export default function RootLayout({
         className={`${jakartaSans.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         <ThemeProvider>
-          <OfflineIndicator />
-          {children}
-          <SWUpdatePrompt />
+          {/* 桌面端外层背景 - 移动端不可见 */}
+          <div
+            className="min-h-screen"
+            style={{ backgroundColor: "var(--theme-desktop-bg)" }}
+          >
+            {/* 居中容器 - 移动端全宽，桌面端固定宽度居中 + 阴影 */}
+            <div
+              id="app-shell"
+              className="relative mx-auto w-full max-w-[480px] min-h-screen md:shadow-2xl"
+              style={{ backgroundColor: "var(--theme-surface)" }}
+            >
+              <OfflineIndicator />
+              {children}
+              <SWUpdatePrompt />
+            </div>
+          </div>
         </ThemeProvider>
       </body>
     </html>

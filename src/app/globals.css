@@ -181,6 +181,15 @@
   --theme-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --theme-shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08);
   --theme-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.1);
+  /* 桌面端背景 - 移动端与 surface 相同，桌面端显示为更深的背景 */
+  --theme-desktop-bg: #FAFAFA;
+}
+
+/* 桌面端背景：仅在 md 以上断点生效 */
+@media (min-width: 768px) {
+  :root {
+    --theme-desktop-bg: #E8E4EF;
+  }
 }
 
 /* 暗夜主题 (Dark) - Dracula */
@@ -213,6 +222,15 @@
   --theme-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
   --theme-shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4);
   --theme-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.5);
+  /* 桌面端背景 - 移动端与 surface 相同 */
+  --theme-desktop-bg: #282A36;
+}
+
+/* 暗色模式桌面端背景 */
+@media (min-width: 768px) {
+  .dark {
+    --theme-desktop-bg: #1E1F29;
+  }
 }
 
 @layer base {
