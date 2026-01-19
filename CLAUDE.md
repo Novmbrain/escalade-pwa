@@ -132,8 +132,10 @@ src/
     ├── weather-constants.ts # 天气配置 (图标, 适宜度阈值)
     ├── weather-utils.ts   # 天气工具 (攀岩适宜度评估)
     ├── city-config.ts     # 城市配置 (ID, 名称, 坐标, adcode)
+    ├── logger.ts          # 服务端统一日志工具
+    ├── client-logger.ts   # 客户端日志工具 (上报到服务端)
     ├── mongodb.ts         # MongoDB 连接层
-    ├── db/index.ts        # 数据访问层 (CRUD)
+    ├── db/index.ts        # 数据访问层 (CRUD, 带日志)
     └── themes/            # 主题系统
         ├── index.ts       # 主题类型和工具函数
         ├── minimal.ts     # 极简专业主题
@@ -462,6 +464,7 @@ import AMapContainer from '@/components/amap-container'
 | `POST` | `/api/beta` | 提交 Beta 视频 (Rate Limited) |
 | `GET` | `/api/weather?lng=119&lat=26` | 获取天气数据 (含攀岩适宜度, 1h缓存) |
 | `GET` | `/api/geo` | IP 定位 → 推断城市 (首次访问智能选择) |
+| `POST` | `/api/log` | 客户端错误上报 (Vercel 日志可见) |
 
 > 岩场/线路数据通过 Server Components 直接从 MongoDB 获取，无需 API 路由
 
@@ -473,6 +476,68 @@ import AMapContainer from '@/components/amap-container'
 - `@/hooks` - 自定义 Hooks
 - `@/types` - 类型定义
 - `@/data` - 静态数据
+
+## Logging System
+
+统一的日志系统，日志可在 Vercel Dashboard 中查看。
+
+### 服务端日志 (`src/lib/logger.ts`)
+
+```typescript
+import { logger, createModuleLogger } from '@/lib/logger'
+
+// 方式 1: 直接使用 logger
+logger.info('Message', { module: 'DB', action: 'getAllCrags', duration: 45 })
+logger.error('Failed', error, { module: 'API', action: 'POST /api/beta' })
+
+// 方式 2: 创建模块专用 logger (推荐)
+const log = createModuleLogger('Weather')
+log.info('Fetched weather', { action: 'GET /api/weather', duration: 120 })
+log.error('API failed', error, { action: 'fetchWeatherData' })
+```
+
+**日志格式:**
+```
+2025-01-19T10:30:45.123Z INFO  [DB](getAllCrags) Fetched 5 crags 45ms
+{"count":5}
+```
+
+### 客户端日志 (`src/lib/client-logger.ts`)
+
+客户端错误自动上报到 `/api/log`，Vercel Dashboard 可见。
+
+```typescript
+'use client'
+import { clientLogger } from '@/lib/client-logger'
+
+// Error Boundary 中使用
+clientLogger.error('Unhandled error', error, {
+  component: 'ErrorBoundary',
+  action: 'render',
+})
+
+// 组件中使用
+clientLogger.warn('Unexpected response', {
+  component: 'SearchOverlay',
+  metadata: { code: 404 },
+})
+```
+
+### 日志级别
+
+| 级别 | 使用场景 | 示例 |
+|------|---------|------|
+| `debug` | 开发调试 (生产不输出) | 变量值、中间状态 |
+| `info` | 正常业务流程 | 数据获取成功 |
+| `warn` | 可恢复的异常 | API 超时重试、缓存未命中 |
+| `error` | 需要关注的错误 | 数据库错误、API 失败 |
+
+### Vercel 日志可见性
+
+```
+✅ 可见: API Routes, Server Components, Middleware 中的日志
+❌ 不可见: Client Components 中的 console (需通过 /api/log 上报)
+```
 
 ## Animations & Utilities
 

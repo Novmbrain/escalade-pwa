@@ -3,7 +3,11 @@ import { getDatabase } from '@/lib/mongodb'
 import { detectPlatformFromUrl, isXiaohongshuUrl, extractXiaohongshuNoteId, extractUrlFromText } from '@/lib/beta-constants'
 import { checkRateLimit, BETA_RATE_LIMIT_CONFIG } from '@/lib/rate-limit'
 import { HTTP_CACHE } from '@/lib/cache-config'
+import { createModuleLogger } from '@/lib/logger'
 import type { Document } from 'mongodb'
+
+// 创建 API 模块专用 logger
+const log = createModuleLogger('API')
 
 /**
  * 获取客户端 IP 地址
@@ -56,11 +60,16 @@ async function resolveShortUrl(url: string): Promise<string> {
 
     // 返回最终 URL
     const finalUrl = response.url
-    console.log(`[resolveShortUrl] ${url} -> ${finalUrl}`)
+    log.debug(`Resolved short URL: ${url} -> ${finalUrl}`, {
+      action: 'resolveShortUrl',
+    })
     return finalUrl
   } catch (error) {
     // 解析失败时返回原 URL
-    console.warn(`[resolveShortUrl] Failed to resolve ${url}:`, error)
+    log.warn(`Failed to resolve short URL: ${url}`, {
+      action: 'resolveShortUrl',
+      metadata: { error: error instanceof Error ? error.message : String(error) },
+    })
     return url
   }
 }
@@ -74,12 +83,19 @@ async function resolveShortUrl(url: string): Promise<string> {
  * - 基于笔记 ID 的去重（静默成功）
  */
 export async function POST(request: NextRequest) {
+  const start = Date.now()
+  const clientIp = getClientIp(request)
+
   try {
     // ==================== 1. Rate Limiting ====================
-    const clientIp = getClientIp(request)
     const rateLimitResult = checkRateLimit(`beta:${clientIp}`, BETA_RATE_LIMIT_CONFIG)
 
     if (!rateLimitResult.allowed) {
+      log.warn('Rate limit exceeded', {
+        action: 'POST /api/beta',
+        duration: Date.now() - start,
+        metadata: { ip: clientIp, retryAfter: rateLimitResult.retryAfter },
+      })
       return NextResponse.json(
         {
           error: '请求过于频繁，请稍后再试',
@@ -181,7 +197,11 @@ export async function POST(request: NextRequest) {
 
     if (isDuplicate) {
       // 返回冲突错误：该 Beta 已被分享过
-      console.log(`[Beta] 重复提交被拒绝: routeId=${routeId}, noteId=${noteId}`)
+      log.info('Duplicate beta submission rejected', {
+        action: 'POST /api/beta',
+        duration: Date.now() - start,
+        metadata: { routeId, noteId, ip: clientIp },
+      })
       return NextResponse.json(
         {
           error: '该视频已被分享过啦～',
@@ -215,11 +235,22 @@ export async function POST(request: NextRequest) {
     )
 
     if (result.modifiedCount === 0) {
+      log.error('Beta update failed', undefined, {
+        action: 'POST /api/beta',
+        duration: Date.now() - start,
+        metadata: { routeId, betaId },
+      })
       return NextResponse.json(
         { error: '更新失败' },
         { status: 500 }
       )
     }
+
+    log.info('Beta created successfully', {
+      action: 'POST /api/beta',
+      duration: Date.now() - start,
+      metadata: { routeId, betaId, noteId, ip: clientIp },
+    })
 
     return NextResponse.json(
       {
@@ -236,7 +267,11 @@ export async function POST(request: NextRequest) {
       }
     )
   } catch (error) {
-    console.error('创建 Beta 失败:', error)
+    log.error('Beta creation failed', error, {
+      action: 'POST /api/beta',
+      duration: Date.now() - start,
+      metadata: { ip: clientIp },
+    })
     return NextResponse.json(
       { error: '服务器错误' },
       { status: 500 }
@@ -249,6 +284,8 @@ export async function POST(request: NextRequest) {
  * 获取指定线路的所有 Beta
  */
 export async function GET(request: NextRequest) {
+  const start = Date.now()
+
   try {
     const { searchParams } = new URL(request.url)
     const routeId = searchParams.get('routeId')
@@ -274,6 +311,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const betaCount = route.betaLinks?.length || 0
+    log.debug(`Fetched ${betaCount} betas for route ${routeId}`, {
+      action: 'GET /api/beta',
+      duration: Date.now() - start,
+    })
+
     return NextResponse.json(
       {
         success: true,
@@ -286,7 +329,10 @@ export async function GET(request: NextRequest) {
       }
     )
   } catch (error) {
-    console.error('获取 Beta 失败:', error)
+    log.error('Beta fetch failed', error, {
+      action: 'GET /api/beta',
+      duration: Date.now() - start,
+    })
     return NextResponse.json(
       { error: '服务器错误' },
       { status: 500 }

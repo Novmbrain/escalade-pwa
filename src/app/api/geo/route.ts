@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCityByAdcode, DEFAULT_CITY_ID, type CityId } from '@/lib/city-config'
+import { createModuleLogger } from '@/lib/logger'
+
+// 创建 Geo 模块专用 logger
+const log = createModuleLogger('Geo')
 
 /**
  * 高德 IP 定位 API 响应类型
@@ -27,12 +31,18 @@ interface IpLocationResponse {
  * - city: 城市名称（调试用）
  */
 export async function GET(request: NextRequest) {
+  const start = Date.now()
+
   try {
     // 1. 获取客户端 IP
     const clientIp = getClientIp(request)
 
     // 本地开发环境，直接返回默认城市
     if (clientIp === '127.0.0.1' || clientIp === '::1') {
+      log.debug('Localhost detected, using default city', {
+        action: 'GET /api/geo',
+        duration: Date.now() - start,
+      })
       return NextResponse.json({
         cityId: DEFAULT_CITY_ID,
         detected: false,
@@ -43,7 +53,9 @@ export async function GET(request: NextRequest) {
     // 2. 调用高德 IP 定位 API
     const amapKey = process.env.NEXT_PUBLIC_AMAP_KEY
     if (!amapKey) {
-      console.error('[Geo API] NEXT_PUBLIC_AMAP_KEY not configured')
+      log.error('NEXT_PUBLIC_AMAP_KEY not configured', undefined, {
+        action: 'GET /api/geo',
+      })
       return NextResponse.json({
         cityId: DEFAULT_CITY_ID,
         detected: false,
@@ -57,13 +69,22 @@ export async function GET(request: NextRequest) {
     })
 
     if (!response.ok) {
+      log.error(`IP API HTTP error: ${response.status}`, undefined, {
+        action: 'GET /api/geo',
+        duration: Date.now() - start,
+        metadata: { status: response.status, ip: clientIp },
+      })
       throw new Error(`IP API returned ${response.status}`)
     }
 
     const data: IpLocationResponse = await response.json()
 
     if (data.status !== '1') {
-      console.warn('[Geo API] IP location failed:', data.info)
+      log.warn(`IP location failed: ${data.info}`, {
+        action: 'GET /api/geo',
+        duration: Date.now() - start,
+        metadata: { info: data.info, ip: clientIp },
+      })
       return NextResponse.json({
         cityId: DEFAULT_CITY_ID,
         detected: false,
@@ -77,6 +98,11 @@ export async function GET(request: NextRequest) {
     const cityName = Array.isArray(data.city) ? data.city[0] : data.city
 
     if (!adcode) {
+      log.info('No adcode returned from IP location', {
+        action: 'GET /api/geo',
+        duration: Date.now() - start,
+        metadata: { province: data.province, city: cityName },
+      })
       return NextResponse.json({
         cityId: DEFAULT_CITY_ID,
         detected: false,
@@ -90,6 +116,16 @@ export async function GET(request: NextRequest) {
     const matchedCity = getCityByAdcode(adcode)
     const cityId: CityId = matchedCity?.id ?? DEFAULT_CITY_ID
 
+    log.info(`IP location successful: ${data.province} ${cityName}`, {
+      action: 'GET /api/geo',
+      duration: Date.now() - start,
+      metadata: {
+        adcode,
+        detected: !!matchedCity,
+        matchedCityId: cityId,
+      },
+    })
+
     return NextResponse.json({
       cityId,
       detected: !!matchedCity,
@@ -99,7 +135,10 @@ export async function GET(request: NextRequest) {
       matchedCity: matchedCity?.name,
     })
   } catch (error) {
-    console.error('[Geo API] Error:', error)
+    log.error('Geo API error', error, {
+      action: 'GET /api/geo',
+      duration: Date.now() - start,
+    })
     return NextResponse.json({
       cityId: DEFAULT_CITY_ID,
       detected: false,
