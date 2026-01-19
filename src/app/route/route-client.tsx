@@ -172,7 +172,7 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
             />
             <input
               type="text"
-              placeholder="搜索线路名称"
+              placeholder="搜索线路，支持拼音如 yts"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full h-10 pl-10 pr-10 text-sm focus:outline-none"
