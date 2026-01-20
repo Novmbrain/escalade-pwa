@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { FileText, Car, ChevronLeft, Play, Map } from 'lucide-react'
+import { FileText, Car, ChevronLeft, Map } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getCragCoverUrl } from '@/lib/constants'
 import AMapContainer from '@/components/amap-container'
@@ -107,11 +107,11 @@ export default function CragDetailClient({ crag, routes }: CragDetailClientProps
             ))}
           </div>
 
-          {/* Beta 视频按钮 */}
-          <button className="absolute left-1/2 bottom-12 -translate-x-1/2 flex items-center gap-2 bg-black/65 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+          {/* Beta 视频按钮 - 暂时隐藏 */}
+          {/* <button className="absolute left-1/2 bottom-12 -translate-x-1/2 flex items-center gap-2 bg-black/65 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
             <Play className="w-4 h-4 text-white" />
             <span className="text-white text-sm font-medium">岩场介绍视频</span>
-          </button>
+          </button> */}
         </div>
       </div>
 
