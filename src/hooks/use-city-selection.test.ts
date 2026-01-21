@@ -424,5 +424,42 @@ describe('useCitySelection', () => {
         }))
       })
     })
+
+    it('老用户 + 本会话已记录时跳过 geo API 调用（优化）', async () => {
+      // 模拟老用户：有缓存城市
+      localStorageMock.setItem('selected-city', 'xiamen')
+      localStorageMock.setItem('city-first-visit', 'true')
+      // 模拟本会话已记录
+      sessionStorageMock.setItem('session-visit-recorded', 'true')
+
+      const { result } = renderHook(() => useCitySelection())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // 应该使用缓存的城市
+      expect(result.current.cityId).toBe('xiamen')
+      // 关键断言：不应该调用任何 API（geo 和 visit 都不需要）
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it('老用户首次进入本会话时仍调用 geo API（需要省份信息）', async () => {
+      // 模拟老用户：有缓存城市
+      localStorageMock.setItem('selected-city', 'xiamen')
+      localStorageMock.setItem('city-first-visit', 'true')
+      // 本会话未记录（sessionStorage 是空的）
+
+      const { result } = renderHook(() => useCitySelection())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // 应该调用 geo API 获取省份信息
+      expect(mockFetch).toHaveBeenCalledWith('/api/geo')
+      // 城市仍然使用缓存的
+      expect(result.current.cityId).toBe('xiamen')
+    })
   })
 })

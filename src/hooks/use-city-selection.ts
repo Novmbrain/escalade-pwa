@@ -59,34 +59,44 @@ export function useCitySelection(): UseCitySelectionReturn {
     async function init() {
       const storedCity = localStorage.getItem(STORAGE_KEY)
       const visited = localStorage.getItem(FIRST_VISIT_KEY)
+      const sessionVisited = sessionStorage.getItem(SESSION_VISIT_KEY)
 
-      // 1. 调用 geo API（用于访问记录和城市检测）
+      // 优化：老用户 + 本会话已记录 → 跳过 geo API 调用
+      // geo API 返回 { cityId, province }:
+      //   - cityId: 用于城市选择（有 localStorage 缓存时不需要）
+      //   - province: 用于访问记录（有 sessionStorage 标记时不需要）
+      const hasValidCachedCity = storedCity && isValidCityId(storedCity)
+      const needGeoApi = !sessionVisited || !hasValidCachedCity
+
       let geoData: { cityId?: string; province?: string } | null = null
-      try {
-        const response = await fetch('/api/geo')
-        if (response.ok) {
-          geoData = await response.json()
+
+      if (needGeoApi) {
+        // 调用 geo API（用于访问记录的省份信息 和/或 新用户的城市检测）
+        try {
+          const response = await fetch('/api/geo')
+          if (response.ok) {
+            geoData = await response.json()
+          }
+        } catch (error) {
+          console.warn('[useCitySelection] IP detection failed:', error)
         }
-      } catch (error) {
-        console.warn('[useCitySelection] IP detection failed:', error)
       }
 
-      // 2. 记录访问（单会话只记录一次）
-      //    使用 sessionStorage 去重：同一会话内多次进入首页不重复计数
-      const sessionVisited = sessionStorage.getItem(SESSION_VISIT_KEY)
+      // 记录访问（单会话只记录一次）
+      // 使用 sessionStorage 去重：同一会话内多次进入首页不重复计数
       if (!sessionVisited) {
         recordVisit(geoData?.province)
         sessionStorage.setItem(SESSION_VISIT_KEY, 'true')
       }
 
-      // 3. 处理首次访问标记（用于显示切换提示）
+      // 处理首次访问标记（用于显示切换提示）
       if (!visited) {
         setIsFirstVisit(true)
         localStorage.setItem(FIRST_VISIT_KEY, 'true')
       }
 
-      // 4. 处理城市选择
-      if (storedCity && isValidCityId(storedCity)) {
+      // 处理城市选择
+      if (hasValidCachedCity) {
         // 已有存储的城市，直接使用
         setCityId(storedCity)
       } else if (geoData?.cityId && isValidCityId(geoData.cityId)) {
