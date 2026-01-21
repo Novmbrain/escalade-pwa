@@ -13,6 +13,7 @@ import {
 
 const STORAGE_KEY = 'selected-city'
 const FIRST_VISIT_KEY = 'city-first-visit'
+const SESSION_VISIT_KEY = 'session-visit-recorded' // sessionStorage: 单会话去重
 
 // ==================== 类型 ====================
 
@@ -70,9 +71,13 @@ export function useCitySelection(): UseCitySelectionReturn {
         console.warn('[useCitySelection] IP detection failed:', error)
       }
 
-      // 2. 记录访问（每次打开都记录，不去重）
-      //    有省份则记录省份，无省份（海外/失败）记录为「海外」
-      recordVisit(geoData?.province)
+      // 2. 记录访问（单会话只记录一次）
+      //    使用 sessionStorage 去重：同一会话内多次进入首页不重复计数
+      const sessionVisited = sessionStorage.getItem(SESSION_VISIT_KEY)
+      if (!sessionVisited) {
+        recordVisit(geoData?.province)
+        sessionStorage.setItem(SESSION_VISIT_KEY, 'true')
+      }
 
       // 3. 处理首次访问标记（用于显示切换提示）
       if (!visited) {
@@ -127,9 +132,13 @@ export function useCitySelection(): UseCitySelectionReturn {
 
 /**
  * 记录用户访问（静默失败，不阻塞主流程）
- * 每次打开 App 都会调用，不去重
  *
- * @param province 省份名称，海外用户传 undefined
+ * 去重策略：使用 sessionStorage，一次浏览器会话只记录一次
+ * - 打开 App → 记录 +1
+ * - 同会话内多次进入首页 → 不重复记录
+ * - 关闭标签页/浏览器后重新打开 → 记录 +1
+ *
+ * @param province 省份名称，海外用户传 undefined（记录为「海外」）
  */
 function recordVisit(province?: string): void {
   fetch('/api/visit', {
