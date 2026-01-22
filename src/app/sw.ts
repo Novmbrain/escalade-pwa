@@ -59,12 +59,63 @@ const r2ImageCache: RuntimeCaching = {
   handler: new OfflineFirstImageStrategy(),
 };
 
+/**
+ * Next.js Image 优化请求处理策略
+ *
+ * Next.js <Image> 组件通过 /_next/image?url=xxx 路由请求图片
+ * 我们需要从 URL 参数中提取原始图片 URL，然后检查离线缓存
+ *
+ * 优先级:
+ * 1. 从 url 参数提取原始图片 URL
+ * 2. 检查离线下载缓存 (offline-crag-images)
+ * 3. 如果找到，返回缓存的图片
+ * 4. 否则正常走网络请求
+ */
+class NextImageOfflineStrategy extends Strategy {
+  constructor() {
+    super({
+      cacheName: "next-image",
+    });
+  }
+
+  async _handle(request: Request, handler: StrategyHandler): Promise<Response> {
+    const url = new URL(request.url);
+    const originalUrl = url.searchParams.get("url");
+
+    // 只处理 img.bouldering.top 的图片
+    if (originalUrl && originalUrl.includes("img.bouldering.top")) {
+      // 检查离线缓存
+      const offlineCache = await caches.open(OFFLINE_CACHE.CACHE_NAME);
+      const offlineResponse = await offlineCache.match(originalUrl);
+
+      if (offlineResponse) {
+        // 离线缓存命中，直接返回原始图片
+        // 注意：这绕过了 Next.js 的图片优化，但在离线时这是可接受的
+        return offlineResponse;
+      }
+    }
+
+    // 没有离线缓存，正常请求网络
+    return fetch(request);
+  }
+}
+
+// Next.js Image 优化请求 - 检查离线缓存
+const nextImageCache: RuntimeCaching = {
+  matcher: ({ url }) =>
+    url.pathname === "/_next/image" &&
+    url.searchParams.get("url")?.includes("img.bouldering.top"),
+  handler: new NextImageOfflineStrategy(),
+};
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [r2ImageCache, ...defaultCache],
+  // 顺序重要：nextImageCache 需要在 defaultCache 之前
+  // 以便拦截 /_next/image 请求并检查离线缓存
+  runtimeCaching: [r2ImageCache, nextImageCache, ...defaultCache],
 });
 
 serwist.addEventListeners();
