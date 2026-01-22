@@ -48,6 +48,8 @@ export default defineConfig({
       resolve: {
         alias: {
           '@': path.resolve(__dirname, './src'),
+          // Mock next-intl for component testing (returns Chinese translations)
+          'next-intl': path.resolve(__dirname, './playwright/mocks/next-intl.ts'),
         },
       },
     },
