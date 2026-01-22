@@ -1,28 +1,26 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
-import { useRouter, usePathname } from '@/i18n/navigation'
+import { useTranslations } from 'next-intl'
 import { Globe } from 'lucide-react'
 import { routing, type Locale } from '@/i18n/routing'
 import { useMemo } from 'react'
 import { SegmentedControl, type SegmentOption } from '@/components/ui/segmented-control'
+import { useLocalePreference } from '@/hooks/use-locale-preference'
 
 /**
  * 语言切换器组件 - 简单按钮版本
  *
  * 显示当前语言，点击切换到另一种语言
- * 切换时保持当前页面路径不变
+ * 切换时保持当前页面路径不变，并更新 localStorage 缓存
  */
 export function LocaleSwitcher() {
   const t = useTranslations('LocaleSwitcher')
-  const locale = useLocale() as Locale
-  const router = useRouter()
-  const pathname = usePathname()
+  const { locale, switchLocale } = useLocalePreference()
 
   const handleSwitch = () => {
     // 切换到另一种语言
     const nextLocale = locale === 'zh' ? 'en' : 'zh'
-    router.replace(pathname, { locale: nextLocale })
+    switchLocale(nextLocale)
   }
 
   return (
@@ -48,6 +46,7 @@ export function LocaleSwitcher() {
  *
  * 使用 SegmentedControl 实现语言切换，
  * 与主题切换器保持一致的视觉风格和交互体验。
+ * 切换时自动更新 localStorage 缓存。
  */
 interface LocaleSegmentedProps {
   className?: string
@@ -55,9 +54,7 @@ interface LocaleSegmentedProps {
 
 export function LocaleSegmented({ className }: LocaleSegmentedProps) {
   const t = useTranslations('LocaleSwitcher')
-  const locale = useLocale() as Locale
-  const router = useRouter()
-  const pathname = usePathname()
+  const { locale, switchLocale } = useLocalePreference()
 
   // 语言选项配置
   const localeOptions: SegmentOption<Locale>[] = useMemo(() =>
@@ -73,15 +70,11 @@ export function LocaleSegmented({ className }: LocaleSegmentedProps) {
     [t]
   )
 
-  const handleChange = (newLocale: Locale) => {
-    router.replace(pathname, { locale: newLocale })
-  }
-
   return (
     <SegmentedControl
       options={localeOptions}
       value={locale}
-      onChange={handleChange}
+      onChange={switchLocale}
       ariaLabel={t('languageSelector')}
       className={className}
     />
@@ -92,6 +85,7 @@ export function LocaleSegmented({ className }: LocaleSegmentedProps) {
  * 语言选择器 - 下拉菜单版本
  *
  * 适用于需要紧凑布局的场景
+ * 切换时自动更新 localStorage 缓存。
  */
 interface LocaleSelectProps {
   className?: string
@@ -99,13 +93,11 @@ interface LocaleSelectProps {
 
 export function LocaleSelect({ className }: LocaleSelectProps) {
   const t = useTranslations('LocaleSwitcher')
-  const locale = useLocale() as Locale
-  const router = useRouter()
-  const pathname = usePathname()
+  const { locale, switchLocale } = useLocalePreference()
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLocale = e.target.value as Locale
-    router.replace(pathname, { locale: newLocale })
+    switchLocale(newLocale)
   }
 
   return (
