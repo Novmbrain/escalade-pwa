@@ -21,6 +21,7 @@ interface HomePageClientProps {
 
 export default function HomePageClient({ crags, allRoutes }: HomePageClientProps) {
   const t = useTranslations('HomePage')
+  const tSearch = useTranslations('Search')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [weather, setWeather] = useState<WeatherData | null>(null)
 
@@ -138,7 +139,7 @@ export default function HomePageClient({ crags, allRoutes }: HomePageClientProps
 
       {/* 浮动搜索框 - 仅在有数据时显示 */}
       {city.available && (
-        <FloatingSearch onClick={() => setIsSearchOpen(true)} />
+        <FloatingSearch onClick={() => setIsSearchOpen(true)} placeholder={tSearch('placeholder')} />
       )}
 
       {/* 搜索抽屉 */}

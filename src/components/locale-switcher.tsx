@@ -56,15 +56,15 @@ export function LocaleSegmented({ className }: LocaleSegmentedProps) {
   const t = useTranslations('LocaleSwitcher')
   const { locale, switchLocale } = useLocalePreference()
 
-  // 语言选项配置
+  // 语言选项配置 - 使用国旗 emoji 作为图标
   const localeOptions: SegmentOption<Locale>[] = useMemo(() =>
     routing.locales.map((loc) => ({
       value: loc,
       label: t(loc),
       icon: loc === 'zh' ? (
-        <span className="text-xs font-bold">中</span>
+        <span className="text-base" role="img" aria-label="中文">🇨🇳</span>
       ) : (
-        <span className="text-xs font-bold">En</span>
+        <span className="text-base" role="img" aria-label="English">🇬🇧</span>
       ),
     })),
     [t]
