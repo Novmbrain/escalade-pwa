@@ -6,6 +6,7 @@ import { routing } from '@/i18n/routing'
 import { ThemeProvider } from '@/components/theme-provider'
 import OfflineIndicator from '@/components/offline-indicator'
 import SWUpdatePrompt from '@/components/sw-update-prompt'
+import { LocaleDetector } from '@/components/locale-detector'
 
 type Props = {
   children: React.ReactNode
@@ -91,6 +92,7 @@ export default async function LocaleLayout({ children, params }: Props) {
               backgroundColor: 'var(--theme-surface)',
             }}
           >
+            <LocaleDetector />
             <OfflineIndicator />
             {children}
             <SWUpdatePrompt />
