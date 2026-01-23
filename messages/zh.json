@@ -207,7 +207,7 @@
     "downloadHint": "前往岩场详情页下载",
     "manageTitle": "管理离线数据",
     "emptyTitle": "暂无离线数据",
-    "emptyDescription": "在有网络时，前往岩场详情页点击"下载离线包"按钮",
+    "emptyDescription": "在有网络时，前往岩场详情页点击「下载离线包」按钮",
     "cragInfo": "{routes} 条线路 · {images} 张图片",
     "delete": "删除",
     "confirmDelete": "确定删除 {name} 的离线数据？删除后需重新下载。",
