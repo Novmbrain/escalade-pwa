@@ -150,11 +150,32 @@ const serwist = new Serwist({
   // 2. r2ImageCache/nextImageCache 处理图片
   // 3. defaultCache 处理其他资源
   runtimeCaching: [htmlCache, apiCache, r2ImageCache, nextImageCache, ...defaultCache],
-  // 离线 fallback 配置 - 当导航失败时显示离线页面
+  // 离线 fallback 配置 - 当导航失败时显示对应语言的离线页面
   fallbacks: {
     entries: [
       {
-        // 匹配 HTML 文档导航请求
+        url: "/zh/offline",
+        matcher({ request }) {
+          const url = new URL(request.url);
+          return request.destination === "document" && url.pathname.startsWith("/zh");
+        },
+      },
+      {
+        url: "/en/offline",
+        matcher({ request }) {
+          const url = new URL(request.url);
+          return request.destination === "document" && url.pathname.startsWith("/en");
+        },
+      },
+      {
+        url: "/fr/offline",
+        matcher({ request }) {
+          const url = new URL(request.url);
+          return request.destination === "document" && url.pathname.startsWith("/fr");
+        },
+      },
+      {
+        // 默认 fallback (无语言前缀的请求)
         url: "/zh/offline",
         matcher({ request }) {
           return request.destination === "document";

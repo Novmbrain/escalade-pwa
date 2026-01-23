@@ -25,10 +25,11 @@ const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
   disable: isDev,
-  // 预缓存离线页面，确保离线时可访问
+  // 预缓存离线页面，确保离线时可访问（所有支持的语言）
   additionalPrecacheEntries: [
     { url: "/zh/offline", revision },
     { url: "/en/offline", revision },
+    { url: "/fr/offline", revision },
   ],
 });
 
