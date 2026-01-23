@@ -167,6 +167,20 @@
     "deleteSuccess": "Données hors ligne supprimées",
     "notSupported": "Votre navigateur ne prend pas en charge les fonctionnalités hors ligne"
   },
+  "OfflineCache": {
+    "title": "Cache hors ligne",
+    "cragsDownloaded": "{count, plural, =1 {# site téléchargé} other {# sites téléchargés}}",
+    "routesAvailable": "{count, plural, =1 {# voie disponible hors ligne} other {# voies disponibles hors ligne}}",
+    "noDownloads": "Pas de données hors ligne",
+    "downloadHint": "Téléchargez depuis les pages de détails des sites",
+    "manageTitle": "Gérer les données hors ligne",
+    "emptyTitle": "Pas de données hors ligne",
+    "emptyDescription": "Lorsque vous êtes en ligne, allez sur une page de détails d'un site et appuyez sur « Télécharger hors ligne » pour le sauvegarder",
+    "cragInfo": "{routes, plural, =1 {# voie} other {# voies}} · {images, plural, =1 {# image} other {# images}}",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer les données hors ligne pour {name} ? Vous devrez les retélécharger.",
+    "deleteHint": "Après la suppression, ce site ne sera plus disponible hors ligne. Vous pouvez le retélécharger à tout moment."
+  },
   "InstallCard": {
     "title": "Ajouter à l'écran d'accueil",
     "description": "Pour une meilleure expérience",
