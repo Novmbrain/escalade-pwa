@@ -385,14 +385,15 @@ export function RouteDetailDrawer({
           src={topoImageUrl}
           alt={route.name}
         >
-          {/* Topo 线路叠加层 */}
+          {/* Topo 线路叠加层 - 全屏模式使用 contain 匹配图片 object-contain */}
           {hasTopoLine && (
             <TopoLineOverlay
               ref={fullscreenOverlayRef}
               points={route.topoLine!}
               color={routeColor}
               animated
-                          />
+              objectFit="contain"
+            />
           )}
         </ImageViewer>
       )}

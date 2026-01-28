@@ -24,6 +24,13 @@ export interface TopoLineOverlayProps {
   onAnimationStart?: () => void
   /** 动画完成回调 */
   onAnimationEnd?: () => void
+  /**
+   * 图片填充模式，用于匹配 CSS object-fit 行为
+   * - 'cover': 对应 object-cover，SVG 使用 xMidYMid slice（裁剪填满）
+   * - 'contain': 对应 object-contain，SVG 使用 xMidYMid meet（完整显示）
+   * 默认为 'cover'
+   */
+  objectFit?: 'cover' | 'contain'
 }
 
 export interface TopoLineOverlayRef {
@@ -58,6 +65,7 @@ export const TopoLineOverlay = forwardRef<TopoLineOverlayRef, TopoLineOverlayPro
       autoPlayDelay,
       onAnimationStart,
       onAnimationEnd,
+      objectFit = 'cover',
     },
     ref
   ) {
@@ -125,11 +133,16 @@ export const TopoLineOverlay = forwardRef<TopoLineOverlayRef, TopoLineOverlayPro
     // 点不足 2 个时不渲染
     if (scaledPoints.length < 2) return null
 
+    // SVG preserveAspectRatio 映射：
+    // - cover (object-cover) → xMidYMid slice (裁剪填满，保持比例)
+    // - contain (object-contain) → xMidYMid meet (完整显示，保持比例)
+    const preserveAspectRatio = objectFit === 'contain' ? 'xMidYMid meet' : 'xMidYMid slice'
+
     return (
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
         viewBox={`0 0 ${TOPO_VIEW_WIDTH} ${TOPO_VIEW_HEIGHT}`}
-        preserveAspectRatio="none"
+        preserveAspectRatio={preserveAspectRatio}
       >
         {/* 线路路径 - 外层白色描边 (增加可见性) */}
         <path
