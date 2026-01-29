@@ -137,11 +137,11 @@ export async function PATCH(
     if (body.faceId !== undefined) {
       if (body.faceId === null) {
         updates.faceId = undefined
-      } else if (typeof body.faceId === 'string' && /^[a-z0-9-]+$/.test(body.faceId)) {
+      } else if (typeof body.faceId === 'string' && /^[\u4e00-\u9fffa-z0-9-]+$/.test(body.faceId)) {
         updates.faceId = body.faceId
       } else {
         return NextResponse.json(
-          { success: false, error: 'faceId 格式无效，仅允许小写字母、数字和连字符' },
+          { success: false, error: 'faceId 格式无效，仅允许中文、小写字母、数字和连字符' },
           { status: 400 }
         )
       }
