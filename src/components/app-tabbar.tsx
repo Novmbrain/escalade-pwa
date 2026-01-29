@@ -52,7 +52,7 @@ export function AppTabbar() {
     if (tapCount >= SECRET_TAP_COUNT) {
       e.preventDefault() // 阻止 Link 默认导航
       sessionStorage.removeItem(SECRET_STORAGE_KEY)
-      router.push('/demo/editor')
+      router.push('/editor')
     } else {
       // 保存状态到 sessionStorage
       sessionStorage.setItem(SECRET_STORAGE_KEY, JSON.stringify({
