@@ -326,7 +326,7 @@ export default function FaceManagementPage() {
   )
 
   // ============ 右栏：详情/新建 ============
-  const canCreate = isCreating && newFaceId && /^[a-z0-9-]+$/.test(newFaceId) && uploadedFile
+  const canCreate = isCreating && newFaceId && /^[\u4e00-\u9fffa-z0-9-]+$/.test(newFaceId) && uploadedFile
 
   const rightPanel = (
     <div className="h-full overflow-y-auto">
@@ -375,15 +375,15 @@ export default function FaceManagementPage() {
               </label>
               <input
                 type="text"
-                placeholder="如 main-wall-1（小写字母、数字、连字符）"
+                placeholder="如 主墙-1 或 main-wall-1"
                 value={newFaceId}
-                onChange={(e) => setNewFaceId(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                onChange={(e) => setNewFaceId(e.target.value.toLowerCase().replace(/[^\u4e00-\u9fffa-z0-9-]/g, ''))}
                 className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--theme-primary)]"
                 style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-on-surface)' }}
               />
-              {newFaceId && !/^[a-z0-9-]+$/.test(newFaceId) && (
+              {newFaceId && !/^[\u4e00-\u9fffa-z0-9-]+$/.test(newFaceId) && (
                 <p className="text-xs mt-1.5" style={{ color: 'var(--theme-error)' }}>
-                  只允许小写字母、数字和连字符
+                  只允许中文、小写字母、数字和连字符
                 </p>
               )}
               {newFaceId && faceGroups.some(f => f.faceId === newFaceId) && (
