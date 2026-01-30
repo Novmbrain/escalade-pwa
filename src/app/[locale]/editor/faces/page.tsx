@@ -48,6 +48,9 @@ export default function FaceManagementPage() {
 
   // ============ 新建模式 ============
   const [isCreating, setIsCreating] = useState(false)
+
+  // ============ 移动端视图切换 ============
+  const [mobileShowDetail, setMobileShowDetail] = useState(false)
   const [newFaceId, setNewFaceId] = useState('')
   const [newArea, setNewArea] = useState('')
   const [customArea, setCustomArea] = useState('')
@@ -143,6 +146,7 @@ export default function FaceManagementPage() {
     setSelectedFace(null)
     setIsCreating(false)
     setSelectedArea(null)
+    setMobileShowDetail(false)
   }, [setSelectedCragId])
 
   // ============ 文件处理 ============
@@ -310,7 +314,7 @@ export default function FaceManagementPage() {
               faceGroups.map(face => (
                 <button
                   key={face.faceId}
-                  onClick={() => { setSelectedFace(face); setIsCreating(false) }}
+                  onClick={() => { setSelectedFace(face); setIsCreating(false); setMobileShowDetail(true) }}
                   className={`
                     w-full text-left p-3 transition-all duration-200 active:scale-[0.98]
                     ${selectedFace?.faceId === face.faceId && !isCreating ? 'ring-2' : ''}
@@ -356,7 +360,7 @@ export default function FaceManagementPage() {
 
           {/* 新建按钮 */}
           <button
-            onClick={() => { setIsCreating(true); setSelectedFace(null) }}
+            onClick={() => { setIsCreating(true); setSelectedFace(null); setMobileShowDetail(true) }}
             className="w-full mt-3 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
             style={{
               backgroundColor: isCreating ? 'var(--theme-primary)' : 'var(--theme-surface-variant)',
@@ -595,7 +599,7 @@ export default function FaceManagementPage() {
         /* 空状态 */
         <div className="flex flex-col items-center justify-center h-full" style={{ color: 'var(--theme-on-surface-variant)' }}>
           <ImageIcon className="w-16 h-16 mb-4 opacity-30" />
-          <p className="text-lg font-medium mb-1">从左侧选择或新建岩面</p>
+          <p className="text-lg font-medium mb-1">选择或新建岩面</p>
           <p className="text-sm">选择岩面查看详情，或点击「新建岩面」创建</p>
         </div>
       )}
@@ -641,12 +645,23 @@ export default function FaceManagementPage() {
           </div>
         </div>
 
-        {/* 移动端单列 */}
+        {/* 移动端：列表/详情切换 */}
         <div className="lg:hidden">
-          {leftPanel}
-          <div className="mt-4">
-            {rightPanel}
-          </div>
+          {!mobileShowDetail ? (
+            leftPanel
+          ) : (
+            <div className="space-y-4 animate-fade-in-up">
+              <button
+                onClick={() => { setMobileShowDetail(false); setSelectedFace(null); setIsCreating(false) }}
+                className="flex items-center gap-2 p-2 -ml-2 rounded-xl transition-all duration-200 active:scale-95"
+                style={{ color: 'var(--theme-primary)' }}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-sm font-medium">返回岩面列表</span>
+              </button>
+              {rightPanel}
+            </div>
+          )}
         </div>
       </div>
 
