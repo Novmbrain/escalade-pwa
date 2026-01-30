@@ -32,6 +32,8 @@ export interface MultiTopoLineOverlayProps {
   onRouteSelect: (routeId: number) => void
   /** 图片填充模式 */
   objectFit?: 'cover' | 'contain'
+  /** 自定义 preserveAspectRatio，覆盖 objectFit 推导值 */
+  preserveAspectRatio?: string
 }
 
 export interface MultiTopoLineOverlayRef {
@@ -55,6 +57,7 @@ export const MultiTopoLineOverlay = forwardRef<MultiTopoLineOverlayRef, MultiTop
       selectedRouteId,
       onRouteSelect,
       objectFit = 'cover',
+      preserveAspectRatio: preserveAspectRatioProp,
     },
     ref
   ) {
@@ -143,15 +146,13 @@ export const MultiTopoLineOverlay = forwardRef<MultiTopoLineOverlayRef, MultiTop
     }, [selectedRouteId, isAnimating, onRouteSelect])
 
     // 没有有效线路时不渲染
-    if (routes.length === 0 || !selectedRoute) return null
+    if (routes.length === 0) return null
 
-    const selectedData = routePathData.get(selectedRouteId)
-    if (!selectedData) return null
-
-    const selectedColor = getGradeColor(selectedRoute.grade)
+    const selectedData = selectedRoute ? routePathData.get(selectedRouteId) : null
+    const selectedColor = selectedRoute ? getGradeColor(selectedRoute.grade) : ''
 
     // SVG preserveAspectRatio 映射
-    const preserveAspectRatio = objectFit === 'contain' ? 'xMidYMid meet' : 'xMidYMid slice'
+    const preserveAspectRatio = preserveAspectRatioProp ?? (objectFit === 'contain' ? 'xMidYMid meet' : 'xMidYMid slice')
 
     return (
       <svg
@@ -191,6 +192,20 @@ export const MultiTopoLineOverlay = forwardRef<MultiTopoLineOverlayRef, MultiTop
                 strokeLinejoin={TOPO_LINE_CONFIG.strokeLinejoin}
                 fill="none"
               />
+              {/* 透明加宽 hit area - 便于点击线路主体切换 */}
+              <path
+                d={data.path}
+                stroke="transparent"
+                strokeWidth={16}
+                strokeLinecap={TOPO_LINE_CONFIG.strokeLinecap}
+                strokeLinejoin={TOPO_LINE_CONFIG.strokeLinejoin}
+                fill="none"
+                style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleRouteClick(route.id)
+                }}
+              />
               {/* 起点标记 - 可点击切换 */}
               <circle
                 cx={data.start.x}
@@ -210,58 +225,60 @@ export const MultiTopoLineOverlay = forwardRef<MultiTopoLineOverlayRef, MultiTop
         })}
 
         {/* 选中线路 (后渲染，在顶层) */}
-        <g
-          style={{
-            transition: `opacity ${TOPO_MULTI_LINE_CONFIG.fadeInDuration}ms ease-in`,
-          }}
-        >
-          {/* 外层白色描边 */}
-          <path
-            d={selectedData.path}
-            stroke="white"
-            strokeWidth={TOPO_LINE_CONFIG.outlineWidth}
-            strokeLinecap={TOPO_LINE_CONFIG.strokeLinecap}
-            strokeLinejoin={TOPO_LINE_CONFIG.strokeLinejoin}
-            fill="none"
-            opacity={TOPO_LINE_CONFIG.outlineOpacity}
-          />
-
-          {/* 主线条 (带画线动画) */}
-          <path
-            ref={selectedPathRef}
-            d={selectedData.path}
-            stroke={selectedColor}
-            strokeWidth={TOPO_LINE_CONFIG.strokeWidth}
-            strokeLinecap={TOPO_LINE_CONFIG.strokeLinecap}
-            strokeLinejoin={TOPO_LINE_CONFIG.strokeLinejoin}
-            fill="none"
-          />
-
-          {/* 起点 - 可点击触发重播动画 */}
-          <circle
-            cx={selectedData.start.x}
-            cy={selectedData.start.y}
-            r={TOPO_MARKER_CONFIG.startRadius}
-            fill={selectedColor}
-            stroke="white"
-            strokeWidth={TOPO_MARKER_CONFIG.strokeWidth}
-            style={{ cursor: 'pointer', pointerEvents: 'auto' }}
-            onClick={(e) => {
-              e.stopPropagation()
-              animate()
+        {selectedData && (
+          <g
+            style={{
+              transition: `opacity ${TOPO_MULTI_LINE_CONFIG.fadeInDuration}ms ease-in`,
             }}
-          />
+          >
+            {/* 外层白色描边 */}
+            <path
+              d={selectedData.path}
+              stroke="white"
+              strokeWidth={TOPO_LINE_CONFIG.outlineWidth}
+              strokeLinecap={TOPO_LINE_CONFIG.strokeLinecap}
+              strokeLinejoin={TOPO_LINE_CONFIG.strokeLinejoin}
+              fill="none"
+              opacity={TOPO_LINE_CONFIG.outlineOpacity}
+            />
 
-          {/* 终点 */}
-          <circle
-            cx={selectedData.end.x}
-            cy={selectedData.end.y}
-            r={TOPO_MARKER_CONFIG.endRadius}
-            fill="white"
-            stroke={selectedColor}
-            strokeWidth={TOPO_MARKER_CONFIG.endStrokeWidth}
-          />
-        </g>
+            {/* 主线条 (带画线动画) */}
+            <path
+              ref={selectedPathRef}
+              d={selectedData.path}
+              stroke={selectedColor}
+              strokeWidth={TOPO_LINE_CONFIG.strokeWidth}
+              strokeLinecap={TOPO_LINE_CONFIG.strokeLinecap}
+              strokeLinejoin={TOPO_LINE_CONFIG.strokeLinejoin}
+              fill="none"
+            />
+
+            {/* 起点 - 可点击触发重播动画 */}
+            <circle
+              cx={selectedData.start.x}
+              cy={selectedData.start.y}
+              r={TOPO_MARKER_CONFIG.startRadius}
+              fill={selectedColor}
+              stroke="white"
+              strokeWidth={TOPO_MARKER_CONFIG.strokeWidth}
+              style={{ cursor: 'pointer', pointerEvents: 'auto' }}
+              onClick={(e) => {
+                e.stopPropagation()
+                animate()
+              }}
+            />
+
+            {/* 终点 */}
+            <circle
+              cx={selectedData.end.x}
+              cy={selectedData.end.y}
+              r={TOPO_MARKER_CONFIG.endRadius}
+              fill="white"
+              stroke={selectedColor}
+              strokeWidth={TOPO_MARKER_CONFIG.endStrokeWidth}
+            />
+          </g>
+        )}
       </svg>
     )
   }

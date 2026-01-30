@@ -14,6 +14,8 @@ import {
   Maximize,
   Trash2,
   AlertCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { AppTabbar } from '@/components/app-tabbar'
@@ -27,6 +29,8 @@ import { useCragRoutes } from '@/hooks/use-crag-routes'
 import { CragSelector } from '@/components/editor/crag-selector'
 import { RouteCard } from '@/components/editor/route-card'
 import { FullscreenTopoEditor } from '@/components/editor/fullscreen-topo-editor'
+import { MultiTopoLineOverlay } from '@/components/multi-topo-line-overlay'
+import type { MultiTopoRoute } from '@/components/multi-topo-line-overlay'
 import { VIEW_WIDTH, VIEW_HEIGHT, GRADE_OPTIONS } from '@/lib/editor-utils'
 
 interface R2FaceInfo {
@@ -79,6 +83,7 @@ export default function RouteAnnotationPage() {
   // ============ UI 状态 ============
   const [showEditorPanel, setShowEditorPanel] = useState(false)
   const [isFullscreenEdit, setIsFullscreenEdit] = useState(false)
+  const [showOtherRoutes, setShowOtherRoutes] = useState(true)
 
   // ============ Refs ============
   const containerRef = useRef<HTMLDivElement>(null)
@@ -197,6 +202,16 @@ export default function RouteAnnotationPage() {
       unmarked: areaRoutes.length - marked.length,
     }
   }, [areaRoutes])
+
+  // ============ 同岩面的其他线路（用于多线路叠加） ============
+  const sameFaceRoutes = useMemo<MultiTopoRoute[]>(() => {
+    if (!selectedRoute?.faceId || !showOtherRoutes) return []
+    const faceGroup = areaFaceGroups.find(f => f.faceId === selectedRoute.faceId)
+    if (!faceGroup) return []
+    return faceGroup.routes
+      .filter(r => r.id !== selectedRoute.id && r.topoLine && r.topoLine.length >= 2)
+      .map(r => ({ id: r.id, name: r.name, grade: r.grade, topoLine: r.topoLine! }))
+  }, [selectedRoute, areaFaceGroups, showOtherRoutes])
 
   // ============ 切换岩场 ============
   const handleSelectCrag = useCallback((id: string) => {
@@ -555,8 +570,26 @@ export default function RouteAnnotationPage() {
                 <h3 className="font-semibold" style={{ color: 'var(--theme-on-surface)' }}>Topo 标注</h3>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--theme-on-surface-variant)' }}>点击图片添加控制点</p>
               </div>
-              <div className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-on-surface)' }}>
-                {topoLine.length} 个点
+              <div className="flex items-center gap-2">
+                {sameFaceRoutes.length > 0 && (
+                  <button
+                    onClick={() => setShowOtherRoutes(prev => !prev)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-200 active:scale-95"
+                    style={{
+                      backgroundColor: showOtherRoutes
+                        ? 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))'
+                        : 'var(--theme-surface)',
+                      color: showOtherRoutes ? 'var(--theme-primary)' : 'var(--theme-on-surface-variant)',
+                    }}
+                    title={showOtherRoutes ? '隐藏其他线路' : '显示其他线路'}
+                  >
+                    {showOtherRoutes ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    {sameFaceRoutes.length}条
+                  </button>
+                )}
+                <div className="px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-on-surface)' }}>
+                  {topoLine.length} 个点
+                </div>
               </div>
             </div>
 
@@ -597,7 +630,20 @@ export default function RouteAnnotationPage() {
                     onError={() => { setIsImageLoading(false); setImageLoadError(true) }}
                   />
 
-                  {/* SVG 叠加层 */}
+                  {/* 多线路叠加层（其他线路，灰色可点击） */}
+                  {sameFaceRoutes.length > 0 && (
+                    <MultiTopoLineOverlay
+                      routes={sameFaceRoutes}
+                      selectedRouteId={-1}
+                      onRouteSelect={(routeId) => {
+                        const target = routes.find(r => r.id === routeId)
+                        if (target) setSelectedRoute(target)
+                      }}
+                      preserveAspectRatio="none"
+                    />
+                  )}
+
+                  {/* 当前线路 SVG 叠加层（带编号控制点，用于编辑） */}
                   <svg
                     className="absolute inset-0 w-full h-full pointer-events-none"
                     viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
