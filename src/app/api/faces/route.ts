@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { S3Client, ListObjectsV2Command, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { getDatabase } from '@/lib/mongodb'
 import { createModuleLogger } from '@/lib/logger'
 
 const log = createModuleLogger('API:Faces')
@@ -103,6 +104,69 @@ export async function GET(request: NextRequest) {
     })
     return NextResponse.json(
       { success: false, error: '获取岩面列表失败' },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * DELETE /api/faces
+ * 删除 R2 上的岩面图片，并清除关联 routes 的 faceId
+ *
+ * Body: { cragId, area, faceId }
+ */
+export async function DELETE(request: NextRequest) {
+  const start = Date.now()
+
+  try {
+    const { cragId, area, faceId } = await request.json()
+
+    if (!cragId || !area || !faceId) {
+      return NextResponse.json(
+        { success: false, error: '缺少 cragId、area 或 faceId' },
+        { status: 400 }
+      )
+    }
+
+    const bucketName = process.env.R2_BUCKET_NAME
+    if (!bucketName) {
+      return NextResponse.json(
+        { success: false, error: 'R2 配置未设置' },
+        { status: 500 }
+      )
+    }
+
+    // 1. 删除 R2 文件
+    const key = `${cragId}/${area}/${faceId}.jpg`
+    await getS3Client().send(new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+    }))
+
+    // 2. 清除关联 routes 的 faceId
+    const db = await getDatabase()
+    const updateResult = await db.collection('routes').updateMany(
+      { cragId, faceId },
+      { $unset: { faceId: '' } }
+    )
+
+    log.info('Face deleted', {
+      action: 'DELETE /api/faces',
+      duration: Date.now() - start,
+      metadata: { cragId, area, faceId, routesCleared: updateResult.modifiedCount },
+    })
+
+    return NextResponse.json({
+      success: true,
+      routesCleared: updateResult.modifiedCount,
+    })
+  } catch (error) {
+    log.error('Failed to delete face', error, {
+      action: 'DELETE /api/faces',
+      duration: Date.now() - start,
+    })
+    return NextResponse.json(
+      { success: false, error: '删除岩面失败' },
       { status: 500 }
     )
   }
