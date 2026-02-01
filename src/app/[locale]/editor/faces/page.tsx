@@ -44,11 +44,6 @@ interface FaceGroup {
 function FaceThumbnail({ src, alt }: { src: string; alt: string }) {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
 
-  // src 变化时重置状态
-  useEffect(() => {
-    setStatus('loading')
-  }, [src])
-
   return (
     <>
       {status === 'loading' && (
@@ -64,6 +59,7 @@ function FaceThumbnail({ src, alt }: { src: string; alt: string }) {
       )}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
+        key={src}
         src={src}
         alt={alt}
         className={`w-full h-full object-cover ${status === 'loaded' ? '' : 'hidden'}`}
