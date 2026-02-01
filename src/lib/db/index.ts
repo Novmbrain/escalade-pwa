@@ -13,7 +13,7 @@ const log = createModuleLogger('DB')
  * MongoDB 原生驱动使用 _id: ObjectId，但本项目使用字符串/数字作为 _id
  */
 function toMongoId(id: string | number): Document['_id'] {
-  return toMongoId(id)
+  return id as Document['_id']
 }
 
 /**
