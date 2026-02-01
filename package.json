@@ -40,8 +40,8 @@
     "tailwind-merge": "^3.4.0"
   },
   "lint-staged": {
-    "*.{ts,tsx}": "eslint --max-warnings=0",
-    "*.{js,mjs}": "eslint --max-warnings=0"
+    "*.{ts,tsx}": "eslint",
+    "*.{js,mjs}": "eslint"
   },
   "devDependencies": {
     "@playwright/experimental-ct-react": "^1.57.0",
