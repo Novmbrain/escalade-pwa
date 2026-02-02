@@ -171,9 +171,11 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
       })
     }
     if (selectedGrades.length > 0) {
+      // 显示难度范围：≤3 个列出全部，>3 个显示首尾范围如 "V2–V7"
+      const sorted = [...selectedGrades].sort((a, b) => compareGrades(a, b))
       const label = selectedGrades.length <= 3
-        ? selectedGrades.join(', ')
-        : `${selectedGrades.length} ${t('selectedGrades', { count: selectedGrades.length }).replace(/^已选 \d+ 个/, '')}`
+        ? sorted.join(', ')
+        : `${sorted[0]}–${sorted[sorted.length - 1]}`
       tags.push({
         label,
         onRemove: () => updateSearchParams(FILTER_PARAMS.GRADE, null),
