@@ -162,18 +162,18 @@ export async function PATCH(request: NextRequest) {
       ContentType: 'image/jpeg',
     }))
 
-    // 2. 删除旧 key
-    await client.send(new DeleteObjectCommand({
-      Bucket: bucketName,
-      Key: oldKey,
-    }))
-
-    // 3. 更新关联 routes 的 faceId
+    // 2. Copy 成功后，删除旧 key 和更新 DB 可并行执行
     const db = await getDatabase()
-    const updateResult = await db.collection('routes').updateMany(
-      { cragId, faceId: oldFaceId },
-      { $set: { faceId: newFaceId } }
-    )
+    const [, updateResult] = await Promise.all([
+      client.send(new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: oldKey,
+      })),
+      db.collection('routes').updateMany(
+        { cragId, faceId: oldFaceId },
+        { $set: { faceId: newFaceId } }
+      ),
+    ])
 
     log.info('Face renamed', {
       action: 'PATCH /api/faces',

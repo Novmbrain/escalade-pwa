@@ -236,7 +236,7 @@ export function DownloadStatusIndicator({
   if (isDownloading) {
     return (
       <div className={cn('flex items-center gap-1 text-xs', className)}>
-        <Loader2 className="w-3 h-3 animate-spin" />
+        <div className="w-3 h-3 animate-spin"><Loader2 className="w-full h-full" /></div>
         <span>{t('downloading')}</span>
       </div>
     )
