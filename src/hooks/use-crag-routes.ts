@@ -41,6 +41,7 @@ export function useCragRoutes() {
       return
     }
 
+    setRoutes([])
     async function loadRoutes() {
       setIsLoadingRoutes(true)
       try {

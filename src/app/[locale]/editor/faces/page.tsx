@@ -134,6 +134,7 @@ export default function FaceManagementPage() {
       setR2Faces([])
       return
     }
+    setR2Faces([])
     let cancelled = false
     loadFaces(selectedCragId).then(() => { if (cancelled) return })
     return () => { cancelled = true }
