@@ -16,6 +16,7 @@ import {
   Check,
   RefreshCw,
 } from 'lucide-react'
+import imageCompression from 'browser-image-compression'
 import { Link } from '@/i18n/navigation'
 import { AppTabbar } from '@/components/app-tabbar'
 import { Input } from '@/components/ui/input'
@@ -110,6 +111,7 @@ export default function FaceManagementPage() {
   const [isSubmittingRename, setIsSubmittingRename] = useState(false)
   const [isAddingArea, setIsAddingArea] = useState(false)
   const [newAreaName, setNewAreaName] = useState('')
+  const [compressionProgress, setCompressionProgress] = useState<number | null>(null)
 
   // ============ Refs ============
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -262,8 +264,19 @@ export default function FaceManagementPage() {
 
     setIsUploading(true)
     try {
+      let fileToUpload: File = uploadedFile
+      if (fileToUpload.size > 5 * 1024 * 1024) {
+        setCompressionProgress(0)
+        fileToUpload = await imageCompression(fileToUpload, {
+          maxSizeMB: 4,
+          maxWidthOrHeight: 4096,
+          useWebWorker: true,
+          onProgress: (p: number) => setCompressionProgress(Math.round(p)),
+        })
+        setCompressionProgress(null)
+      }
       const formData = new FormData()
-      formData.append('file', uploadedFile)
+      formData.append('file', fileToUpload)
       formData.append('cragId', selectedCragId)
       formData.append('faceId', faceId)
       formData.append('area', uploadArea)
@@ -710,7 +723,17 @@ export default function FaceManagementPage() {
               opacity: !canCreate || isUploading ? 0.5 : 1,
             }}
           >
-            {isUploading ? (
+            {compressionProgress !== null ? (
+              <div className="w-full px-2">
+                <div className="flex justify-between text-xs mb-1">
+                  <span>压缩中...</span>
+                  <span>{compressionProgress}%</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-on-primary) 20%, transparent)' }}>
+                  <div className="h-full rounded-full transition-all" style={{ width: `${compressionProgress}%`, backgroundColor: 'var(--theme-on-primary)' }} />
+                </div>
+              </div>
+            ) : isUploading ? (
               <><Loader2 className="w-5 h-5 animate-spin" /> 上传中...</>
             ) : (
               <><Upload className="w-5 h-5" /> 创建岩面</>
@@ -854,7 +877,17 @@ export default function FaceManagementPage() {
                     opacity: isUploading ? 0.5 : 1,
                   }}
                 >
-                  {isUploading ? (
+                  {compressionProgress !== null ? (
+                    <div className="w-full px-2">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>压缩中...</span>
+                        <span>{compressionProgress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'color-mix(in srgb, var(--theme-on-primary) 20%, transparent)' }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${compressionProgress}%`, backgroundColor: 'var(--theme-on-primary)' }} />
+                      </div>
+                    </div>
+                  ) : isUploading ? (
                     <><Loader2 className="w-5 h-5 animate-spin" /> 上传中...</>
                   ) : (
                     <><Upload className="w-5 h-5" /> 更换照片</>
