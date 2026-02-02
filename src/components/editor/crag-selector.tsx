@@ -48,7 +48,7 @@ export function CragSelector({
               <Mountain className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
               {isLoading ? (
                 <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <div className="w-4 h-4 animate-spin"><Loader2 className="w-full h-full" /></div>
                   加载中...
                 </span>
               ) : selectedCrag ? (

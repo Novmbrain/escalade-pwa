@@ -540,7 +540,7 @@ export default function FaceManagementPage() {
           <div className="flex-1 overflow-y-auto min-h-0 space-y-2">
             {isLoadingRoutes || isLoadingFaces ? (
               <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--theme-on-surface-variant)' }}>
-                <Loader2 className="w-8 h-8 animate-spin mb-3" />
+                <div className="w-8 h-8 animate-spin mb-3"><Loader2 className="w-full h-full" /></div>
                 <span>加载中...</span>
               </div>
             ) : faceGroups.length === 0 ? (
@@ -734,7 +734,7 @@ export default function FaceManagementPage() {
                 </div>
               </div>
             ) : isUploading ? (
-              <><Loader2 className="w-5 h-5 animate-spin" /> 上传中...</>
+              <><div className="w-5 h-5 animate-spin"><Loader2 className="w-full h-full" /></div> 上传中...</>
             ) : (
               <><Upload className="w-5 h-5" /> 创建岩面</>
             )}
@@ -771,7 +771,7 @@ export default function FaceManagementPage() {
                     className="p-1.5 rounded-lg transition-all active:scale-90"
                     style={{ color: 'var(--theme-primary)' }}
                   >
-                    {isSubmittingRename ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {isSubmittingRename ? <div className="w-4 h-4 animate-spin"><Loader2 className="w-full h-full" /></div> : <Check className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={() => setIsRenaming(false)}
@@ -888,7 +888,7 @@ export default function FaceManagementPage() {
                       </div>
                     </div>
                   ) : isUploading ? (
-                    <><Loader2 className="w-5 h-5 animate-spin" /> 上传中...</>
+                    <><div className="w-5 h-5 animate-spin"><Loader2 className="w-full h-full" /></div> 上传中...</>
                   ) : (
                     <><Upload className="w-5 h-5" /> 更换照片</>
                   )}
@@ -1048,7 +1048,7 @@ export default function FaceManagementPage() {
                 disabled={isDeleting}
               >
                 {isDeleting ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> 删除中...</>
+                  <><div className="w-4 h-4 animate-spin"><Loader2 className="w-full h-full" /></div> 删除中...</>
                 ) : (
                   '确认删除'
                 )}

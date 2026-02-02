@@ -40,8 +40,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CragDetailPage({ params }: PageProps) {
   const { id } = await params
-  const crag = await getCragById(id)
-  const routes = await getRoutesByCragId(id)
+  const [crag, routes] = await Promise.all([
+    getCragById(id),
+    getRoutesByCragId(id),
+  ])
 
   if (!crag) {
     notFound()

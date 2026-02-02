@@ -21,5 +21,10 @@ export default async function HomePage() {
     getAllRoutes(),
   ])
 
-  return <HomePageClient crags={crags} allRoutes={allRoutes} />
+  // 裁剪 Route 数据，去除首页不需要的大字段 (topoLine, description, image, setter)
+  // 减少 Server→Client RSC payload 大小
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const lightRoutes = allRoutes.map(({ topoLine, description, image, setter, ...rest }) => rest)
+
+  return <HomePageClient crags={crags} allRoutes={lightRoutes} />
 }

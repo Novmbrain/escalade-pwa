@@ -428,7 +428,7 @@ export default function RouteAnnotationPage() {
             </label>
             {isLoadingRoutes ? (
               <div className="flex items-center justify-center py-4" style={{ color: 'var(--theme-on-surface-variant)' }}>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <div className="w-5 h-5 animate-spin"><Loader2 className="w-full h-full" /></div>
               </div>
             ) : (
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
@@ -673,7 +673,7 @@ export default function RouteAnnotationPage() {
               }}
             >
               {isSubmittingCreate ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> 创建中...</>
+                <><div className="w-5 h-5 animate-spin"><Loader2 className="w-full h-full" /></div> 创建中...</>
               ) : (
                 <><Plus className="w-5 h-5" /> 创建线路</>
               )}
@@ -719,7 +719,7 @@ export default function RouteAnnotationPage() {
             </label>
             {isLoadingFaces ? (
               <div className="flex items-center justify-center py-3" style={{ color: 'var(--theme-on-surface-variant)' }}>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <div className="w-5 h-5 animate-spin"><Loader2 className="w-full h-full" /></div>
               </div>
             ) : areaFaceGroups.length === 0 ? (
               <div className="text-center py-3" style={{ color: 'var(--theme-on-surface-variant)' }}>
@@ -831,7 +831,7 @@ export default function RouteAnnotationPage() {
                   {isImageLoading && (
                     <div className="absolute inset-0 flex items-center justify-center z-10" style={{ backgroundColor: 'var(--theme-surface-variant)' }}>
                       <div className="text-center">
-                        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" style={{ color: 'var(--theme-primary)' }} />
+                        <div className="w-8 h-8 animate-spin mx-auto mb-2"><Loader2 className="w-full h-full" style={{ color: 'var(--theme-primary)' }} /></div>
                         <p className="text-sm" style={{ color: 'var(--theme-on-surface-variant)' }}>加载云端图片...</p>
                       </div>
                     </div>
@@ -1025,7 +1025,7 @@ export default function RouteAnnotationPage() {
             disabled={isSaving}
           >
             {isSaving ? (
-              <><Loader2 className="w-5 h-5 animate-spin" /> 保存中...</>
+              <><div className="w-5 h-5 animate-spin"><Loader2 className="w-full h-full" /></div> 保存中...</>
             ) : saveSuccess ? (
               <><Check className="w-5 h-5" /> 保存成功</>
             ) : (

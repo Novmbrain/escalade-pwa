@@ -142,8 +142,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ==================== 3. 解析短链接 & 提取笔记 ID ====================
-    // 先解析短链接获取完整 URL
-    const resolvedUrl = await resolveShortUrl(url)
+    // 并行启动：短链解析（网络 IO）和数据库连接（连接池）互不依赖
+    const [resolvedUrl, db] = await Promise.all([
+      resolveShortUrl(url),
+      getDatabase(),
+    ])
 
     // 从解析后的 URL 提取笔记 ID
     const noteId = extractXiaohongshuNoteId(resolvedUrl)
@@ -156,7 +159,6 @@ export async function POST(request: NextRequest) {
     }
 
     // ==================== 4. 去重检查 ====================
-    const db = await getDatabase()
 
     // 检查线路是否存在，并获取现有的 betaLinks
     const route = await db.collection('routes').findOne(
