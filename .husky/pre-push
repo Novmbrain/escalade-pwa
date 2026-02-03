@@ -1,9 +1,15 @@
 #!/usr/bin/env sh
 
-# Pre-push hook: run tsc --noEmit against committed-only files
-# Stash uncommitted changes so tsc sees the same code as CI
+# Pre-push hook: 完整本地 CI（替代 GitHub Actions）
+# 运行 ESLint + TypeScript + Vitest + Playwright
 
-# Check if there are uncommitted changes to stash
+set -e
+
+echo ""
+echo "🚀 Running local CI before push..."
+echo "─────────────────────────────────────────────"
+
+# Stash uncommitted changes to test committed code only
 if ! git diff --quiet || ! git diff --cached --quiet; then
   git stash push --keep-index --include-untracked -q -m "pre-push-hook"
   STASHED=1
@@ -11,18 +17,66 @@ else
   STASHED=0
 fi
 
-echo "🔍 Running TypeScript check before push..."
-npx tsc --noEmit
-TSC_EXIT=$?
+# Cleanup function
+cleanup() {
+  if [ "$STASHED" = "1" ]; then
+    git stash pop -q 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
 
-# Restore stashed changes
-if [ "$STASHED" = "1" ]; then
-  git stash pop -q
+# Track failures
+FAILED=0
+
+# 1. ESLint
+echo ""
+echo "🔍 [1/4] ESLint..."
+if npm run lint --silent; then
+  echo "   ✅ ESLint passed"
+else
+  echo "   ❌ ESLint failed"
+  FAILED=1
 fi
 
-if [ $TSC_EXIT -ne 0 ]; then
-  echo "❌ TypeScript check failed. Push aborted."
+# 2. TypeScript
+echo ""
+echo "📘 [2/4] TypeScript..."
+if npx tsc --noEmit; then
+  echo "   ✅ TypeScript passed"
+else
+  echo "   ❌ TypeScript failed"
+  FAILED=1
+fi
+
+# 3. Vitest (单元测试)
+echo ""
+echo "🧪 [3/4] Vitest..."
+if npm run test:run --silent; then
+  echo "   ✅ Vitest passed"
+else
+  echo "   ❌ Vitest failed"
+  FAILED=1
+fi
+
+# 4. Playwright (组件测试)
+echo ""
+echo "🎭 [4/4] Playwright..."
+if npm run test:ct --silent 2>/dev/null; then
+  echo "   ✅ Playwright passed"
+else
+  echo "   ❌ Playwright failed"
+  FAILED=1
+fi
+
+echo ""
+echo "─────────────────────────────────────────────"
+
+if [ "$FAILED" -ne 0 ]; then
+  echo "❌ Local CI failed. Push aborted."
+  echo ""
+  echo "💡 To skip (not recommended): git push --no-verify"
   exit 1
 fi
 
-echo "✅ TypeScript check passed."
+echo "✅ All checks passed!"
+echo ""
