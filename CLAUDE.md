@@ -75,7 +75,7 @@ npx shadcn@latest add <component>  # 添加 UI 组件
 - **Theming:** next-themes (日间/暗夜/自动模式，Dracula 配色)
 - **PWA:** Serwist (service worker at `src/app/sw.ts`)
 - **Testing:** Vitest + Testing Library + Playwright (组件测试)
-- **CI/CD:** GitHub Actions (质量检查) + Vercel (部署)
+- **CI/CD:** 本地 pre-push hook (质量检查) + Vercel (部署)
 - **Map:** 高德地图 JS API 1.4.15 (@amap/amap-jsapi-loader)
 - **Icons:** lucide-react
 - **Fonts:** Plus Jakarta Sans (sans) + JetBrains Mono (mono)
@@ -675,13 +675,15 @@ clientLogger.warn('Unexpected response', {
 - `filter-chip.tsx`, `grade-range-selector.tsx`
 - `drawer.tsx`, `crag-card.tsx`, `search-overlay.tsx`
 
-### CI 流水线
+### CI 流水线（本地 pre-push hook）
 
-GitHub Actions 自动运行 (push/PR 到 main/dev):
+所有质量检查在本地 `git push` 时自动运行（`.husky/pre-push`）：
 1. 🔍 ESLint - 代码规范
 2. 📘 TypeScript - 类型检查
-3. 🧪 Unit Tests - Vitest + 覆盖率
+3. 🧪 Vitest - 单元测试
 4. 🎭 Playwright - 组件测试
+
+> 任一检查失败会阻止 push。跳过检查（不推荐）：`git push --no-verify`
 
 ## Git Workflow
 
@@ -693,7 +695,7 @@ GitHub Actions 自动运行 (push/PR 到 main/dev):
 1. **先创建 Issue** - 使用 `gh issue create` 描述需求
 2. **从最新 main 创建 feature 分支** - 命名格式 `feature/issue-{N}-{short-desc}`
 3. **完成开发后创建 PR** - 使用 `Closes #{N}` 链接 Issue
-4. **启用 auto-merge** - 创建 PR 后立即执行 `gh pr merge --auto --rebase`，CI 通过后自动合并
+4. **合并 PR** - 本地 CI 已通过，直接 `gh pr merge --rebase` 合并
 5. **PR 合并后切回 main** - 拉取最新代码，为下一个任务准备干净基础
 
 > 不要跳过任何步骤，即使是小改动也要遵循此流程。
@@ -719,18 +721,18 @@ GitHub Actions 自动运行 (push/PR 到 main/dev):
 
 4. **如果需要连续做多个任务**
    ```
-   任务 A: main → feature/issue-1-xxx → PR → auto-merge
-                                                  ↓
-   任务 B:                               main (pull) → feature/issue-2-yyy → PR → auto-merge
-                                                                                       ↓
-   任务 C:                                                                    main (pull) → feature/issue-3-zzz
+   任务 A: main → feature/issue-1-xxx → PR → merge
+                                                ↓
+   任务 B:                             main (pull) → feature/issue-2-yyy → PR → merge
+                                                                                     ↓
+   任务 C:                                                                  main (pull) → feature/issue-3-zzz
    ```
    **绝对不要**：在 feature/issue-1-xxx 上继续追加任务 B 的 commit
 
 ### Issue-First 开发流程
 
 ```
-Issue 创建 → 从 main 创建分支 → 开发 → PR → auto-merge → 切回 main → (下一个 Issue)
+Issue 创建 → 从 main 创建分支 → 开发 → push (本地 CI) → PR → merge → 切回 main → (下一个 Issue)
 ```
 
 ### 分支策略
@@ -756,10 +758,10 @@ git checkout -b feature/issue-42-add-favorites
 git add <files> && git commit -m "feat: add user favorites"
 git push origin feature/issue-42-add-favorites
 
-# 4. 创建 PR (关联 Issue) + 启用 auto-merge
+# 4. 创建 PR 并合并 (本地 CI 已在 push 时通过)
 gh pr create --base main --title "feat: add favorites" \
   --body "Closes #42"
-gh pr merge --auto --rebase
+gh pr merge --rebase
 
 # 5. PR 合并后清理 (开始下一个任务前必做)
 git checkout main && git pull origin main
@@ -768,10 +770,10 @@ git branch -d feature/issue-42-add-favorites
 
 ### Branch Protection (main)
 
-- ✅ 必须通过 CI (ESLint, TypeScript, Unit Tests, Playwright)
-- ✅ 必须通过 PR 合并
+- ✅ 必须通过 PR 合并（CI 在本地 pre-push 时已执行）
 - ✅ 禁止 force push
 - ❌ 不要求 code review (个人项目)
+- ❌ 不要求远程 CI 检查（已移除 GitHub Actions）
 
 ### GitHub 模板文件
 
