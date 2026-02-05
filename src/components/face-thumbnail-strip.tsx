@@ -84,22 +84,10 @@ export const FaceThumbnailStrip = memo(function FaceThumbnailStrip({
   })
   const selectedArea = areaState.cragId === selectedCrag ? areaState.area : null
 
-  // 预览模式：内部 face 高亮状态（不影响线路列表），绑定到 crag
-  const [previewState, setPreviewState] = useState<{ cragId: string; faceId: string | null }>({
-    cragId: '',
-    faceId: null,
-  })
-  const previewFace = previewState.cragId === selectedCrag ? previewState.faceId : null
-  const setPreviewFace = useCallback(
-    (faceId: string | null) => setPreviewState({ cragId: selectedCrag, faceId }),
-    [selectedCrag]
-  )
-
   // AC4: 切换 area 时重置 face 选中状态
   const setSelectedArea = useCallback(
     (area: string | null) => {
       setAreaState({ cragId: selectedCrag, area })
-      setPreviewState({ cragId: selectedCrag, faceId: null })
       if (selectedFace) {
         onFaceSelect(null)
       }
@@ -172,38 +160,22 @@ export const FaceThumbnailStrip = memo(function FaceThumbnailStrip({
     return allFaceGroups.filter((g) => g.area === selectedArea)
   }, [allFaceGroups, selectedArea])
 
-  // AC3: "全部" area 下选择 face 仅预览，不筛选线路列表
-  // 单 area 时 area chips 不显示，不算"全部"模式
-  const isPreviewMode = selectedArea === null && uniqueAreas.length > 1
-
-  // 视觉高亮的 face：预览模式用内部状态，筛选模式用父级 prop
-  const visualSelectedFace = isPreviewMode ? previewFace : selectedFace
-
   // US-004: 单岩面区域自动选中
   useEffect(() => {
-    if (isPreviewMode) return
     if (faceGroups.length !== 1) return
     if (selectedFace !== null) return
     onFaceSelect(faceGroups[0].key)
-  }, [isPreviewMode, faceGroups, selectedFace, onFaceSelect])
+  }, [faceGroups, selectedFace, onFaceSelect])
 
   const handleAllClick = useCallback(() => {
-    if (isPreviewMode) {
-      setPreviewFace(null)
-    } else {
-      onFaceSelect(null)
-    }
-  }, [isPreviewMode, setPreviewFace, onFaceSelect])
+    onFaceSelect(null)
+  }, [onFaceSelect])
 
   const handleFaceClick = useCallback(
     (key: string) => {
-      if (isPreviewMode) {
-        setPreviewFace(previewFace === key ? null : key)
-      } else {
-        onFaceSelect(selectedFace === key ? null : key)
-      }
+      onFaceSelect(selectedFace === key ? null : key)
     },
-    [isPreviewMode, setPreviewFace, previewFace, onFaceSelect, selectedFace]
+    [onFaceSelect, selectedFace]
   )
 
   if (!selectedCrag) return null
@@ -266,13 +238,13 @@ export const FaceThumbnailStrip = memo(function FaceThumbnailStrip({
             className="w-16 h-12 flex items-center justify-center text-xs font-medium"
             style={{
               borderRadius: 'var(--theme-radius-md)',
-              backgroundColor: !visualSelectedFace
+              backgroundColor: !selectedFace
                 ? 'var(--theme-primary)'
                 : 'var(--theme-surface-variant)',
-              color: !visualSelectedFace
+              color: !selectedFace
                 ? 'var(--theme-on-primary)'
                 : 'var(--theme-on-surface-variant)',
-              border: !visualSelectedFace
+              border: !selectedFace
                 ? '2px solid var(--theme-primary)'
                 : '2px solid transparent',
             }}
@@ -282,7 +254,7 @@ export const FaceThumbnailStrip = memo(function FaceThumbnailStrip({
         </button>
 
         {faceGroups.map((group) => {
-          const isSelected = visualSelectedFace === group.key
+          const isSelected = selectedFace === group.key
           return (
             <button
               key={group.key}
