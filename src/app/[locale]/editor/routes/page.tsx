@@ -27,6 +27,7 @@ import { bezierCurve, scalePoints, normalizePoint } from '@/lib/topo-utils'
 import { getGradeColor } from '@/lib/tokens'
 import { useToast } from '@/components/ui/toast'
 import { useFaceImageCache } from '@/hooks/use-face-image'
+import { useBreakAppShellLimit } from '@/hooks/use-break-app-shell-limit'
 import { matchRouteByQuery } from '@/hooks/use-route-search'
 import { useCragRoutes } from '@/hooks/use-crag-routes'
 import { CragSelector } from '@/components/editor/crag-selector'
@@ -125,21 +126,7 @@ export default function RouteAnnotationPage() {
   }, [selectedCragId])
 
   // ============ 桌面端突破 app-shell 宽度限制 ============
-  useEffect(() => {
-    const shell = document.getElementById('app-shell')
-    if (!shell) return
-    const original = shell.style.maxWidth
-    const mediaQuery = window.matchMedia('(min-width: 1024px)')
-    const update = (mq: MediaQueryList | MediaQueryListEvent) => {
-      shell.style.maxWidth = mq.matches ? 'none' : original
-    }
-    update(mediaQuery)
-    mediaQuery.addEventListener('change', update)
-    return () => {
-      mediaQuery.removeEventListener('change', update)
-      shell.style.maxWidth = original
-    }
-  }, [])
+  useBreakAppShellLimit()
 
   // ============ 派生数据 ============
   // 合并 crag.areas 与 route 派生 areas

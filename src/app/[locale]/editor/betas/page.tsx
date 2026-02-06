@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import {
   ArrowLeft,
   Search,
@@ -31,6 +31,7 @@ import { RouteCard } from '@/components/editor/route-card'
 import { deriveAreas } from '@/lib/editor-areas'
 import { BETA_PLATFORMS } from '@/lib/beta-constants'
 import { BetaSubmitDrawer } from '@/components/beta-submit-drawer'
+import { useBreakAppShellLimit } from '@/hooks/use-break-app-shell-limit'
 
 /**
  * Beta 管理页面
@@ -64,21 +65,7 @@ export default function BetaEditorPage() {
   const { showToast } = useToast()
 
   // ============ 桌面端突破 app-shell 宽度限制 ============
-  useEffect(() => {
-    const shell = document.getElementById('app-shell')
-    if (!shell) return
-    const original = shell.style.maxWidth
-    const mediaQuery = window.matchMedia('(min-width: 1024px)')
-    const update = (mq: MediaQueryList | MediaQueryListEvent) => {
-      shell.style.maxWidth = mq.matches ? 'none' : original
-    }
-    update(mediaQuery)
-    mediaQuery.addEventListener('change', update)
-    return () => {
-      mediaQuery.removeEventListener('change', update)
-      shell.style.maxWidth = original
-    }
-  }, [])
+  useBreakAppShellLimit()
 
   // ============ 派生数据 ============
   const selectedCrag = useMemo(() => crags.find(c => c.id === selectedCragId), [crags, selectedCragId])
