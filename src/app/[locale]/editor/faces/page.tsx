@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import type { Route } from '@/types'
 import { useToast } from '@/components/ui/toast'
 import { useFaceImageCache } from '@/hooks/use-face-image'
+import { useBreakAppShellLimit } from '@/hooks/use-break-app-shell-limit'
 import { useCragRoutes } from '@/hooks/use-crag-routes'
 import { CragSelector } from '@/components/editor/crag-selector'
 import { preloadImage } from '@/lib/editor-utils'
@@ -156,21 +157,7 @@ export default function FaceManagementPage() {
   }, [selectedCragId, isRefreshing, loadFaces, showToast])
 
   // ============ 桌面端突破 app-shell 宽度限制 ============
-  useEffect(() => {
-    const shell = document.getElementById('app-shell')
-    if (!shell) return
-    const original = shell.style.maxWidth
-    const mediaQuery = window.matchMedia('(min-width: 1024px)')
-    const update = (mq: MediaQueryList | MediaQueryListEvent) => {
-      shell.style.maxWidth = mq.matches ? 'none' : original
-    }
-    update(mediaQuery)
-    mediaQuery.addEventListener('change', update)
-    return () => {
-      mediaQuery.removeEventListener('change', update)
-      shell.style.maxWidth = original
-    }
-  }, [])
+  useBreakAppShellLimit()
 
   // ============ 派生数据 ============
   const selectedCrag = useMemo(() => crags.find(c => c.id === selectedCragId), [crags, selectedCragId])
