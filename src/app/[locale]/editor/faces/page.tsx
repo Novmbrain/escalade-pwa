@@ -16,7 +16,6 @@ import {
   Check,
   RefreshCw,
 } from 'lucide-react'
-import imageCompression from 'browser-image-compression'
 import { Link } from '@/i18n/navigation'
 import { AppTabbar } from '@/components/app-tabbar'
 import { Input } from '@/components/ui/input'
@@ -257,6 +256,7 @@ export default function FaceManagementPage() {
       let fileToUpload: File = uploadedFile
       if (fileToUpload.size > 5 * 1024 * 1024) {
         setCompressionProgress(0)
+        const { default: imageCompression } = await import('browser-image-compression')
         fileToUpload = await imageCompression(fileToUpload, {
           maxSizeMB: 4,
           maxWidthOrHeight: 4096,
