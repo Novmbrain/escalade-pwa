@@ -995,6 +995,46 @@ export default function FaceManagementPage() {
             leftPanel
           ) : (
             <div className="space-y-4 animate-fade-in-up">
+              {/* 岩面缩略图快速切换 */}
+              {!isCreating && faceGroups.length > 1 && (
+                <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+                  <div className="flex gap-2" style={{ minWidth: 'min-content' }}>
+                    {faceGroups.map(face => {
+                      const isActive = selectedFace?.faceId === face.faceId
+                      return (
+                        <button
+                          key={face.faceId}
+                          onClick={() => { setSelectedFace(face); setIsRenaming(false) }}
+                          className="flex-shrink-0 flex flex-col items-center gap-1 transition-all active:scale-95"
+                        >
+                          <div
+                            className="w-14 h-10 overflow-hidden"
+                            style={{
+                              borderRadius: 'var(--theme-radius-md)',
+                              border: isActive
+                                ? '2px solid var(--theme-primary)'
+                                : '2px solid transparent',
+                            }}
+                          >
+                            <FaceThumbnail src={face.imageUrl} alt={face.faceId} />
+                          </div>
+                          <span
+                            className="text-xs max-w-14 truncate"
+                            style={{
+                              color: isActive
+                                ? 'var(--theme-primary)'
+                                : 'var(--theme-on-surface-variant)',
+                              fontWeight: isActive ? 600 : 400,
+                            }}
+                          >
+                            {face.faceId}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               {rightPanel}
             </div>
           )}
