@@ -32,6 +32,7 @@ import { matchRouteByQuery } from '@/hooks/use-route-search'
 import { useCragRoutes } from '@/hooks/use-crag-routes'
 import { CragSelector } from '@/components/editor/crag-selector'
 import { RouteCard } from '@/components/editor/route-card'
+import { AreaSelect } from '@/components/editor/area-select'
 import { FullscreenTopoEditor } from '@/components/editor/fullscreen-topo-editor'
 import { MultiTopoLineOverlay } from '@/components/multi-topo-line-overlay'
 import type { MultiTopoRoute } from '@/components/multi-topo-line-overlay'
@@ -49,6 +50,12 @@ interface FaceGroup {
   routes: Route[]
   imageUrl: string
 }
+
+type PendingAction =
+  | { type: 'switchRoute'; payload: Route }
+  | { type: 'switchArea'; payload: string | null }
+  | { type: 'switchCrag'; payload: string }
+  | { type: 'clearTopo' }
 
 /**
  * 线路标注页面
@@ -92,13 +99,17 @@ export default function RouteAnnotationPage() {
   const [newRoute, setNewRoute] = useState({
     name: '', grade: '？', area: '', FA: '', setter: '', description: '',
   })
-  const [newRouteAreaMode, setNewRouteAreaMode] = useState<'select' | 'new'>('select')
-  const [editRouteAreaMode, setEditRouteAreaMode] = useState<'select' | 'new'>('select')
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
   // ============ UI 状态 ============
   const [showEditorPanel, setShowEditorPanel] = useState(false)
   const [isFullscreenEdit, setIsFullscreenEdit] = useState(false)
   const [showOtherRoutes, setShowOtherRoutes] = useState(true)
+
+  // ============ 脏检查状态 ============
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [showClearTopoDialog, setShowClearTopoDialog] = useState(false)
 
   // ============ Refs ============
   const containerRef = useRef<HTMLDivElement>(null)
@@ -106,6 +117,83 @@ export default function RouteAnnotationPage() {
 
   // ============ Toast ============
   const { showToast } = useToast()
+
+  // ============ 脏检查：检测未保存的更改 ============
+  const hasUnsavedChanges = useCallback((): boolean => {
+    if (!selectedRoute) return false
+    const fields = ['name', 'grade', 'area', 'FA', 'setter', 'description'] as const
+    for (const field of fields) {
+      if ((editedRoute[field] ?? '') !== (selectedRoute[field] ?? '')) return true
+    }
+    // Deep compare topoLine
+    if (JSON.stringify(topoLine) !== JSON.stringify(selectedRoute.topoLine || [])) return true
+    return false
+  }, [selectedRoute, editedRoute, topoLine])
+
+  const executePendingAction = useCallback((action: PendingAction) => {
+    switch (action.type) {
+      case 'switchRoute':
+        setSelectedRoute(action.payload)
+        break
+      case 'switchArea':
+        setSelectedArea(action.payload)
+        setSelectedRoute(null)
+        setShowEditorPanel(false)
+        break
+      case 'switchCrag':
+        setSelectedCragId(action.payload)
+        setSelectedRoute(null)
+        setSelectedArea(null)
+        setSelectedFaceId(null)
+        setShowEditorPanel(false)
+        break
+      case 'clearTopo':
+        setTopoLine([])
+        break
+    }
+  }, [setSelectedCragId])
+
+  // ============ 脏检查：拦截处理器 ============
+  const handleRouteClick = useCallback((route: Route) => {
+    if (selectedRoute?.id === route.id) return
+    if (hasUnsavedChanges()) {
+      setPendingAction({ type: 'switchRoute', payload: route })
+      setShowUnsavedDialog(true)
+      return
+    }
+    setSelectedRoute(route)
+  }, [selectedRoute, hasUnsavedChanges])
+
+  const handleAreaSwitch = useCallback((area: string | null) => {
+    if (selectedArea === area) return
+    if (hasUnsavedChanges()) {
+      setPendingAction({ type: 'switchArea', payload: area })
+      setShowUnsavedDialog(true)
+      return
+    }
+    setSelectedArea(area)
+    setSelectedRoute(null)
+    setShowEditorPanel(false)
+  }, [selectedArea, hasUnsavedChanges])
+
+  const handleClearPointsWithConfirm = useCallback(() => {
+    if (topoLine.length === 0) return
+    setShowClearTopoDialog(true)
+  }, [topoLine.length])
+
+  const handleConfirmClearTopo = useCallback(() => {
+    setTopoLine([])
+    setShowClearTopoDialog(false)
+  }, [])
+
+  const handleDiscardAndExecute = useCallback(() => {
+    if (!pendingAction) return
+    executePendingAction(pendingAction)
+    setPendingAction(null)
+    setShowUnsavedDialog(false)
+  }, [pendingAction, executePendingAction])
+
+  // handleSaveAndExecute is defined after handleSave below
 
   // ============ 从 R2 加载岩面列表 ============
   useEffect(() => {
@@ -219,12 +307,17 @@ export default function RouteAnnotationPage() {
 
   // ============ 切换岩场 ============
   const handleSelectCrag = useCallback((id: string) => {
+    if (hasUnsavedChanges()) {
+      setPendingAction({ type: 'switchCrag', payload: id })
+      setShowUnsavedDialog(true)
+      return
+    }
     setSelectedCragId(id)
     setSelectedRoute(null)
     setSelectedArea(null)
     setSelectedFaceId(null)
     setShowEditorPanel(false)
-  }, [setSelectedCragId])
+  }, [setSelectedCragId, hasUnsavedChanges])
 
   // ============ 选择线路时初始化编辑状态 ============
   useEffect(() => {
@@ -239,7 +332,7 @@ export default function RouteAnnotationPage() {
       description: selectedRoute.description,
     })
     setTopoLine(selectedRoute.topoLine || [])
-    setEditRouteAreaMode(areas.includes(selectedRoute.area) ? 'select' : 'new')
+    setFormErrors({})
     setShowEditorPanel(true)
 
     if (justSavedRef.current) {
@@ -285,8 +378,15 @@ export default function RouteAnnotationPage() {
   }, [])
 
   // ============ 保存逻辑 ============
-  const handleSave = useCallback(async () => {
-    if (!selectedRoute) return
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (!selectedRoute) return false
+
+    const errors = validateRouteForm({ name: editedRoute.name || '', area: editedRoute.area || '' })
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return false
+    }
+    setFormErrors({})
 
     setIsSaving(true)
     setSaveError(null)
@@ -321,14 +421,27 @@ export default function RouteAnnotationPage() {
 
       showToast('线路信息保存成功！', 'success', 3000)
       setTimeout(() => setSaveSuccess(false), 2000)
+      return true
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '保存失败'
       setSaveError(errorMsg)
       showToast(errorMsg, 'error', 4000)
+      return false
     } finally {
       setIsSaving(false)
     }
   }, [selectedRoute, editedRoute, topoLine, selectedFaceId, setRoutes, showToast, persistedAreas, selectedCragId, updateCragAreas])
+
+  const handleSaveAndExecute = useCallback(async () => {
+    if (!pendingAction) return
+    const success = await handleSave()
+    if (success) {
+      justSavedRef.current = false // Reset so pending action initializes properly
+      executePendingAction(pendingAction)
+    }
+    setPendingAction(null)
+    setShowUnsavedDialog(false)
+  }, [pendingAction, handleSave, executePendingAction])
 
   // ============ 新增线路逻辑 ============
   const handleStartCreate = useCallback(() => {
@@ -339,11 +452,24 @@ export default function RouteAnnotationPage() {
     setNewRoute({
       name: '', grade: '？', area: defaultArea, FA: '', setter: '', description: '',
     })
-    setNewRouteAreaMode(defaultArea ? 'select' : 'new')
+    setFormErrors({})
   }, [selectedArea])
 
+  function validateRouteForm(data: { name: string; area: string }): Record<string, string> {
+    const errors: Record<string, string> = {}
+    if (!data.name.trim()) errors.name = '请输入线路名称'
+    if (!data.area.trim()) errors.area = '请选择区域'
+    return errors
+  }
+
   const handleSubmitCreate = useCallback(async () => {
-    if (!selectedCragId || !newRoute.name.trim() || !newRoute.area.trim()) return
+    const errors = validateRouteForm(newRoute)
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
+    setFormErrors({})
+    if (!selectedCragId) return
 
     setIsSubmittingCreate(true)
     try {
@@ -378,6 +504,7 @@ export default function RouteAnnotationPage() {
   const handleCancelCreate = useCallback(() => {
     setIsCreatingRoute(false)
     setShowEditorPanel(false)
+    setFormErrors({})
   }, [])
 
   // ============ SVG 计算 ============
@@ -422,7 +549,7 @@ export default function RouteAnnotationPage() {
             ) : (
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
                 <button
-                  onClick={() => { setSelectedArea(null); setSelectedRoute(null); setShowEditorPanel(false) }}
+                  onClick={() => handleAreaSwitch(null)}
                   className="px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 active:scale-95 font-medium text-sm"
                   style={{
                     backgroundColor: selectedArea === null ? 'var(--theme-primary)' : 'var(--theme-surface-variant)',
@@ -436,7 +563,7 @@ export default function RouteAnnotationPage() {
                   return (
                     <button
                       key={area}
-                      onClick={() => { setSelectedArea(area); setSelectedRoute(null); setShowEditorPanel(false) }}
+                      onClick={() => handleAreaSwitch(area)}
                       className="px-4 py-2 rounded-full whitespace-nowrap transition-all duration-200 active:scale-95 font-medium text-sm"
                       style={{
                         backgroundColor: selectedArea === area ? 'var(--theme-primary)' : 'var(--theme-surface-variant)',
@@ -522,7 +649,7 @@ export default function RouteAnnotationPage() {
                   key={route.id}
                   route={route}
                   isSelected={selectedRoute?.id === route.id}
-                  onClick={() => setSelectedRoute(route)}
+                  onClick={() => handleRouteClick(route)}
                 />
               ))
             )}
@@ -561,9 +688,15 @@ export default function RouteAnnotationPage() {
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>名称 *</label>
                 <Input
                   value={newRoute.name}
-                  onChange={(v) => setNewRoute(prev => ({ ...prev, name: v }))}
+                  onChange={(v) => { setNewRoute(prev => ({ ...prev, name: v })); setFormErrors(prev => { const next = {...prev}; delete next.name; return next }) }}
                   placeholder="线路名称"
+                  style={formErrors.name ? { borderColor: 'var(--theme-error)' } : undefined}
                 />
+                {formErrors.name && (
+                  <p className="text-xs mt-1" style={{ color: 'var(--theme-error)' }} role="alert">
+                    {formErrors.name}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>难度 *</label>
@@ -576,47 +709,14 @@ export default function RouteAnnotationPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>区域 *</label>
-                {areas.length > 0 && (
-                  <div className="flex gap-1 mb-1.5">
-                    <button
-                      type="button"
-                      onClick={() => { setNewRouteAreaMode('select'); setNewRoute(prev => ({ ...prev, area: areas[0] })) }}
-                      className="px-2 py-0.5 rounded-lg text-xs font-medium transition-colors"
-                      style={{
-                        backgroundColor: newRouteAreaMode === 'select' ? 'var(--theme-primary)' : 'transparent',
-                        color: newRouteAreaMode === 'select' ? 'var(--theme-on-primary)' : 'var(--theme-on-surface-variant)',
-                      }}
-                    >
-                      选择已有
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setNewRouteAreaMode('new'); setNewRoute(prev => ({ ...prev, area: '' })) }}
-                      className="px-2 py-0.5 rounded-lg text-xs font-medium transition-colors"
-                      style={{
-                        backgroundColor: newRouteAreaMode === 'new' ? 'var(--theme-primary)' : 'transparent',
-                        color: newRouteAreaMode === 'new' ? 'var(--theme-on-primary)' : 'var(--theme-on-surface-variant)',
-                      }}
-                    >
-                      新建区域
-                    </button>
-                  </div>
-                )}
-                {newRouteAreaMode === 'select' && areas.length > 0 ? (
-                  <select
-                    value={newRoute.area}
-                    onChange={(e) => setNewRoute(prev => ({ ...prev, area: e.target.value }))}
-                  >
-                    <option value="">选择区域…</option>
-                    {areas.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                ) : (
-                  <Input
-                    value={newRoute.area}
-                    onChange={(v) => setNewRoute(prev => ({ ...prev, area: v }))}
-                    placeholder="如：A 区"
-                  />
-                )}
+                <AreaSelect
+                  areas={areas}
+                  value={newRoute.area}
+                  onChange={(area) => { setNewRoute(prev => ({ ...prev, area })); setFormErrors(prev => { const next = {...prev}; delete next.area; return next }) }}
+                  placeholder="选择区域..."
+                  required
+                  error={formErrors.area}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>首攀者 (FA)</label>
@@ -653,12 +753,12 @@ export default function RouteAnnotationPage() {
             </button>
             <button
               onClick={handleSubmitCreate}
-              disabled={isSubmittingCreate || !newRoute.name.trim() || !newRoute.area.trim()}
+              disabled={isSubmittingCreate}
               className="flex-1 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
               style={{
                 backgroundColor: 'var(--theme-primary)',
                 color: 'var(--theme-on-primary)',
-                opacity: isSubmittingCreate || !newRoute.name.trim() || !newRoute.area.trim() ? 0.6 : 1,
+                opacity: isSubmittingCreate ? 0.6 : 1,
               }}
             >
               {isSubmittingCreate ? (
@@ -846,7 +946,7 @@ export default function RouteAnnotationPage() {
                       selectedRouteId={-1}
                       onRouteSelect={(routeId) => {
                         const target = routes.find(r => r.id === routeId)
-                        if (target) setSelectedRoute(target)
+                        if (target) handleRouteClick(target)
                       }}
                       preserveAspectRatio="none"
                     />
@@ -897,7 +997,7 @@ export default function RouteAnnotationPage() {
                   <button
                     className="flex-1 py-2.5 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
                     style={{ backgroundColor: 'var(--theme-error)', color: 'white', opacity: topoLine.length === 0 ? 0.5 : 1 }}
-                    onClick={handleClearPoints}
+                    onClick={handleClearPointsWithConfirm}
                     disabled={topoLine.length === 0}
                   >
                     <Trash2 className="w-4 h-4" /> 清空
@@ -922,8 +1022,14 @@ export default function RouteAnnotationPage() {
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>名称 *</label>
                 <Input
                   value={editedRoute.name || ''}
-                  onChange={(v) => setEditedRoute((prev) => ({ ...prev, name: v }))}
+                  onChange={(v) => { setEditedRoute((prev) => ({ ...prev, name: v })); setFormErrors(prev => { const next = {...prev}; delete next.name; return next }) }}
+                  style={formErrors.name ? { borderColor: 'var(--theme-error)' } : undefined}
                 />
+                {formErrors.name && (
+                  <p className="text-xs mt-1" style={{ color: 'var(--theme-error)' }} role="alert">
+                    {formErrors.name}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>难度</label>
@@ -936,46 +1042,14 @@ export default function RouteAnnotationPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>区域</label>
-                {areas.length > 0 && (
-                  <div className="flex gap-1 mb-1.5">
-                    <button
-                      type="button"
-                      onClick={() => { setEditRouteAreaMode('select'); setEditedRoute(prev => ({ ...prev, area: editedRoute.area && areas.includes(editedRoute.area) ? editedRoute.area : areas[0] })) }}
-                      className="px-2 py-0.5 rounded-lg text-xs font-medium transition-colors"
-                      style={{
-                        backgroundColor: editRouteAreaMode === 'select' ? 'var(--theme-primary)' : 'transparent',
-                        color: editRouteAreaMode === 'select' ? 'var(--theme-on-primary)' : 'var(--theme-on-surface-variant)',
-                      }}
-                    >
-                      选择已有
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setEditRouteAreaMode('new'); setEditedRoute(prev => ({ ...prev, area: '' })) }}
-                      className="px-2 py-0.5 rounded-lg text-xs font-medium transition-colors"
-                      style={{
-                        backgroundColor: editRouteAreaMode === 'new' ? 'var(--theme-primary)' : 'transparent',
-                        color: editRouteAreaMode === 'new' ? 'var(--theme-on-primary)' : 'var(--theme-on-surface-variant)',
-                      }}
-                    >
-                      新建区域
-                    </button>
-                  </div>
-                )}
-                {editRouteAreaMode === 'select' && areas.length > 0 ? (
-                  <select
-                    value={editedRoute.area || ''}
-                    onChange={(e) => setEditedRoute(prev => ({ ...prev, area: e.target.value }))}
-                  >
-                    {areas.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                ) : (
-                  <Input
-                    value={editedRoute.area || ''}
-                    onChange={(v) => setEditedRoute(prev => ({ ...prev, area: v }))}
-                    placeholder="输入新区域名称"
-                  />
-                )}
+                <AreaSelect
+                  areas={areas}
+                  value={editedRoute?.area || ''}
+                  onChange={(area) => { setEditedRoute(prev => prev ? { ...prev, area } : prev); setFormErrors(prev => { const next = {...prev}; delete next.area; return next }) }}
+                  placeholder="选择区域..."
+                  required
+                  error={formErrors.area}
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>首攀者 (FA)</label>
@@ -1115,6 +1189,97 @@ export default function RouteAnnotationPage() {
           onClearPoints={handleClearPoints}
           onClose={() => setIsFullscreenEdit(false)}
         />
+      )}
+
+      {/* 未保存更改确认对话框 */}
+      {showUnsavedDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => { setShowUnsavedDialog(false); setPendingAction(null) }}
+        >
+          <div
+            className="mx-4 w-full max-w-sm p-6 rounded-xl"
+            style={{ backgroundColor: 'var(--theme-surface)', boxShadow: 'var(--theme-shadow-lg)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--theme-on-surface)' }}>
+              有未保存的修改
+            </h3>
+            <p className="text-sm mb-6" style={{ color: 'var(--theme-on-surface-variant)' }}>
+              当前线路的修改尚未保存，切换后将丢失这些更改。
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDiscardAndExecute}
+                disabled={isSaving}
+                className="flex-1 py-2.5 px-4 rounded-xl font-medium transition-all duration-200 active:scale-[0.98]"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: 'var(--theme-on-surface)',
+                  border: '1.5px solid var(--theme-outline)',
+                  opacity: isSaving ? 0.5 : 1,
+                }}
+              >
+                丢弃
+              </button>
+              <button
+                onClick={handleSaveAndExecute}
+                disabled={isSaving}
+                className="flex-1 py-2.5 px-4 rounded-xl font-medium transition-all duration-200 active:scale-[0.98]"
+                style={{
+                  backgroundColor: 'var(--theme-primary)',
+                  color: 'var(--theme-on-primary)',
+                  opacity: isSaving ? 0.7 : 1,
+                }}
+              >
+                {isSaving ? '保存中...' : '保存并切换'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 清空 Topo 确认对话框 */}
+      {showClearTopoDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setShowClearTopoDialog(false)}
+        >
+          <div
+            className="mx-4 w-full max-w-sm p-6 rounded-xl"
+            style={{ backgroundColor: 'var(--theme-surface)', boxShadow: 'var(--theme-shadow-lg)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold mb-6" style={{ color: 'var(--theme-on-surface)' }}>
+              确定清空所有标注点？
+            </h3>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowClearTopoDialog(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl font-medium transition-all duration-200 active:scale-[0.98]"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: 'var(--theme-on-surface)',
+                  border: '1.5px solid var(--theme-outline)',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleConfirmClearTopo}
+                className="flex-1 py-2.5 px-4 rounded-xl font-medium transition-all duration-200 active:scale-[0.98]"
+                style={{
+                  backgroundColor: 'var(--theme-error)',
+                  color: 'white',
+                }}
+              >
+                确定
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="lg:hidden">
