@@ -47,8 +47,8 @@
         "npx tsc --noEmit passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "UI enhancement in the editor faces page",
+      "passes": true,
+      "notes": "Completed: Delete confirmation dialog now shows affected routes with topoLine annotations. Uses IIFE pattern to compute affectedRoutes inline. All tests pass.",
       "dependsOn": [
         "US-001"
       ]

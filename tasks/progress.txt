@@ -24,3 +24,17 @@
 - TypeScript: PASS
 - ESLint: PASS
 - Tests: PASS (52 files, 693 tests all passing)
+
+### Iteration 3 (Ralph Loop 2) — 2026-02-06
+**Task**: PWA-app-bwi.3 (US-003): 增强删除确认弹窗显示受影响线路
+**Status**: COMPLETED
+**Changes**:
+- Modified `src/app/[locale]/editor/faces/page.tsx` delete confirmation dialog:
+  - Filter routes with `topoLine?.length > 0` as affected routes
+  - Display affected route names and grades in a surface-variant card
+  - Show warning text explaining topoLine annotations will be cleared
+  - When no routes have topoLine, dialog behaves same as before
+**Verification**:
+- TypeScript: PASS
+- ESLint: PASS
+- Tests: PASS (52 files, 693 tests all passing)
