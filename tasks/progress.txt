@@ -38,3 +38,19 @@
 - TypeScript: PASS
 - ESLint: PASS
 - Tests: PASS (52 files, 693 tests all passing)
+
+### Iteration 4 (Ralph Loop 3) — 2026-02-06
+**Task**: PWA-app-bwi.4 (US-004): 增强覆盖上传确认弹窗支持 topoLine 选择
+**Status**: COMPLETED
+**Changes**:
+- Modified `src/app/[locale]/editor/faces/page.tsx`:
+  - Added `clearTopoOnUpload` state (default false)
+  - Overwrite confirmation dialog now shows affected routes with topoLine
+  - Added radio-style buttons: "保留现有标注" / "清除标注，稍后重新标注"
+  - `doUpload()` passes `clearTopoLines` FormData param based on user choice
+  - Reset `clearTopoOnUpload` on successful upload and cancel
+  - When no routes have topoLine, dialog behaves same as before
+**Verification**:
+- TypeScript: PASS
+- ESLint: PASS
+- Tests: PASS (52 files, 693 tests all passing)
