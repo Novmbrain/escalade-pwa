@@ -26,6 +26,7 @@ import { useFaceImageCache } from '@/hooks/use-face-image'
 import { useBreakAppShellLimit } from '@/hooks/use-break-app-shell-limit'
 import { useCragRoutes } from '@/hooks/use-crag-routes'
 import { CragSelector } from '@/components/editor/crag-selector'
+import { AreaSelect } from '@/components/editor/area-select'
 import { preloadImage } from '@/lib/editor-utils'
 import { deriveAreas, getPersistedAreas } from '@/lib/editor-areas'
 
@@ -99,7 +100,7 @@ export default function FaceManagementPage() {
   const [mobileShowDetail, setMobileShowDetail] = useState(false)
   const [newFaceId, setNewFaceId] = useState('')
   const [newArea, setNewArea] = useState('')
-  const [customArea, setCustomArea] = useState('')
+  const [faceFormErrors, setFaceFormErrors] = useState<Record<string, string>>({})
 
   // ============ 上传状态 ============
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -244,9 +245,7 @@ export default function FaceManagementPage() {
     if (!faceId) return
 
     // 确定 area：新建时从表单获取；替换时从已选 face 获取
-    const uploadArea = isCreating
-      ? (newArea === '__custom__' ? customArea : newArea)
-      : selectedFace?.area
+    const uploadArea = isCreating ? newArea : selectedFace?.area
     if (!uploadArea) {
       showToast('请选择区域', 'error')
       setIsUploading(false)
@@ -290,7 +289,7 @@ export default function FaceManagementPage() {
 
       if (isCreating) {
         // 将新上传的 faceId 加入 R2 列表使其立即可见
-        const area = newArea === '__custom__' ? customArea : newArea
+        const area = newArea
         // 如果是新区域，同步到 crag.areas（仅基于持久化 areas，避免 route 派生 area 泄漏）
         if (area && selectedCragId && !persistedAreas.includes(area)) {
           const merged = [...new Set([...persistedAreas, area])].sort()
@@ -307,7 +306,6 @@ export default function FaceManagementPage() {
         setIsCreating(false)
         setNewFaceId('')
         setNewArea('')
-        setCustomArea('')
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : '上传失败'
@@ -315,18 +313,27 @@ export default function FaceManagementPage() {
     } finally {
       setIsUploading(false)
     }
-  }, [uploadedFile, selectedCragId, isCreating, newFaceId, selectedFace, newArea, customArea, persistedAreas, updateCragAreas, showToast, faceImageCache, clearTopoOnUpload])
+  }, [uploadedFile, selectedCragId, isCreating, newFaceId, selectedFace, newArea, persistedAreas, updateCragAreas, showToast, faceImageCache, clearTopoOnUpload])
 
   const handleUpload = useCallback(async () => {
+    if (isCreating) {
+      const errors: Record<string, string> = {}
+      if (!newFaceId.trim()) errors.faceId = '请输入岩面 ID'
+      else if (!/^[\u4e00-\u9fffa-z0-9-]+$/.test(newFaceId)) errors.faceId = '格式不正确'
+      if (!newArea.trim()) errors.area = '请选择区域'
+      if (Object.keys(errors).length > 0) {
+        setFaceFormErrors(errors)
+        return
+      }
+      setFaceFormErrors({})
+    }
     if (!uploadedFile || !selectedCragId) return
 
     const faceId = isCreating ? newFaceId : selectedFace?.faceId
     if (!faceId) return
 
     // 检查是否已存在
-    const checkArea = isCreating
-      ? (newArea === '__custom__' ? customArea : newArea)
-      : selectedFace?.area
+    const checkArea = isCreating ? newArea : selectedFace?.area
     try {
       const checkFormData = new FormData()
       checkFormData.append('cragId', selectedCragId)
@@ -346,7 +353,7 @@ export default function FaceManagementPage() {
     }
 
     await doUpload()
-  }, [uploadedFile, selectedCragId, isCreating, newFaceId, newArea, customArea, selectedFace, doUpload])
+  }, [uploadedFile, selectedCragId, isCreating, newFaceId, newArea, selectedFace, doUpload])
 
   // ============ 删除岩面 ============
   const handleDeleteFace = useCallback(async () => {
@@ -544,7 +551,7 @@ export default function FaceManagementPage() {
 
           {/* 新建按钮 */}
           <button
-            onClick={() => { setIsCreating(true); setSelectedFace(null); setMobileShowDetail(true) }}
+            onClick={() => { setIsCreating(true); setSelectedFace(null); setMobileShowDetail(true); setFaceFormErrors({}) }}
             className="w-full mb-2 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
             style={{
               backgroundColor: isCreating ? 'var(--theme-primary)' : 'var(--theme-surface-variant)',
@@ -615,7 +622,7 @@ export default function FaceManagementPage() {
   )
 
   // ============ 右栏：详情/新建 ============
-  const canCreate = isCreating && newFaceId && /^[\u4e00-\u9fffa-z0-9-]+$/.test(newFaceId) && uploadedFile
+  const canCreate = isCreating && newFaceId && newArea && /^[\u4e00-\u9fffa-z0-9-]+$/.test(newFaceId) && uploadedFile
 
   const rightPanel = (
     <div className="h-full overflow-y-auto">
@@ -635,24 +642,14 @@ export default function FaceManagementPage() {
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>
                 区域 (Area)
               </label>
-              <select
+              <AreaSelect
+                areas={areas}
                 value={newArea}
-                onChange={(e) => setNewArea(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[var(--theme-primary)]"
-                style={{ backgroundColor: 'var(--theme-surface)', color: 'var(--theme-on-surface)' }}
-              >
-                <option value="">选择区域...</option>
-                {areas.map(a => <option key={a} value={a}>{a}</option>)}
-                <option value="__custom__">+ 新增区域</option>
-              </select>
-              {newArea === '__custom__' && (
-                <Input
-                  placeholder="输入新区域名称"
-                  value={customArea}
-                  onChange={setCustomArea}
-                  className="mt-2"
-                />
-              )}
+                onChange={(area) => { setNewArea(area); setFaceFormErrors(prev => { const next = {...prev}; delete next.area; return next }) }}
+                placeholder="选择区域..."
+                required
+                error={faceFormErrors.area}
+              />
             </div>
 
             {/* FaceId 输入 */}
@@ -663,15 +660,19 @@ export default function FaceManagementPage() {
               <Input
                 placeholder="如 主墙-1 或 main-wall-1"
                 value={newFaceId}
-                onChange={(v) => setNewFaceId(v)}
+                onChange={(v) => { setNewFaceId(v); setFaceFormErrors(prev => { const next = {...prev}; delete next.faceId; return next }) }}
                 onBlur={(e) => {
                   const cleaned = e.target.value.toLowerCase().replace(/[^\u4e00-\u9fffa-z0-9-]/g, '')
                   setNewFaceId(cleaned)
                 }}
+                style={faceFormErrors.faceId ? { borderColor: 'var(--theme-error)' } : undefined}
               />
-              {newFaceId && !/^[\u4e00-\u9fffa-z0-9-]+$/.test(newFaceId) && (
-                <p className="text-xs mt-1.5" style={{ color: 'var(--theme-error)' }}>
-                  只允许中文、小写字母、数字和连字符
+              <p className="text-xs mt-1.5" style={{ color: 'var(--theme-on-surface-variant)' }}>
+                只允许中文、小写字母、数字和连字符
+              </p>
+              {faceFormErrors.faceId && (
+                <p className="text-xs mt-1" style={{ color: 'var(--theme-error)' }} role="alert">
+                  {faceFormErrors.faceId}
                 </p>
               )}
               {newFaceId && faceGroups.some(f => f.faceId === newFaceId) && (
