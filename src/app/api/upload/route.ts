@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { createModuleLogger } from '@/lib/logger'
 import { sanitizePathSegment } from '@/lib/request-utils'
-import { getDatabase } from '@/lib/db'
+import { getDatabase } from '@/lib/mongodb'
 
 const log = createModuleLogger('API:Upload')
 
