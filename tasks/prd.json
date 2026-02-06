@@ -67,14 +67,14 @@
         "npx tsc --noEmit passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "UI enhancement in the editor faces page, depends on US-002 for the API parameter",
+      "passes": true,
+      "notes": "Completed: Overwrite confirmation shows affected routes with radio choice (keep/clear topoLine). clearTopoOnUpload state passed to doUpload FormData. All tests pass.",
       "dependsOn": [
         "US-002"
       ]
     }
   ],
   "metadata": {
-    "updatedAt": "2026-02-06T01:21:00.000Z"
+    "updatedAt": "2026-02-06T01:42:00.000Z"
   }
 }
