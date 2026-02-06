@@ -555,6 +555,19 @@ export default function FaceManagementPage() {
             )}
           </div>
 
+          {/* 新建按钮 */}
+          <button
+            onClick={() => { setIsCreating(true); setSelectedFace(null); setMobileShowDetail(true) }}
+            className="w-full mb-2 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
+            style={{
+              backgroundColor: isCreating ? 'var(--theme-primary)' : 'var(--theme-surface-variant)',
+              color: isCreating ? 'var(--theme-on-primary)' : 'var(--theme-on-surface)',
+            }}
+          >
+            <Plus className="w-5 h-5" />
+            新建岩面
+          </button>
+
           {/* 岩面列表 */}
           <div className="flex-1 overflow-y-auto min-h-0 space-y-2">
             {isLoadingRoutes || isLoadingFaces ? (
@@ -609,19 +622,6 @@ export default function FaceManagementPage() {
               ))
             )}
           </div>
-
-          {/* 新建按钮 */}
-          <button
-            onClick={() => { setIsCreating(true); setSelectedFace(null); setMobileShowDetail(true) }}
-            className="w-full mt-3 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
-            style={{
-              backgroundColor: isCreating ? 'var(--theme-primary)' : 'var(--theme-surface-variant)',
-              color: isCreating ? 'var(--theme-on-primary)' : 'var(--theme-on-surface)',
-            }}
-          >
-            <Plus className="w-5 h-5" />
-            新建岩面
-          </button>
         </>
       )}
     </div>
