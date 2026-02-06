@@ -184,7 +184,8 @@
     "retry": "重试",
     "confirmDelete": "确定删除 {name} 的离线数据？",
     "deleteSuccess": "已删除离线数据",
-    "notSupported": "您的浏览器不支持离线功能"
+    "notSupported": "您的浏览器不支持离线功能",
+    "updateAvailable": "有更新"
   },
   "OfflinePage": {
     "title": "离线内容",

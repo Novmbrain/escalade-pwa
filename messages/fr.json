@@ -182,7 +182,8 @@
     "retry": "Réessayer",
     "confirmDelete": "Supprimer les données hors ligne pour {name} ?",
     "deleteSuccess": "Données hors ligne supprimées",
-    "notSupported": "Votre navigateur ne prend pas en charge les fonctionnalités hors ligne"
+    "notSupported": "Votre navigateur ne prend pas en charge les fonctionnalités hors ligne",
+    "updateAvailable": "Mise à jour disponible"
   },
   "OfflineCache": {
     "title": "Cache hors ligne",

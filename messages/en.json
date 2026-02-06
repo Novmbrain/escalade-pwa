@@ -184,7 +184,8 @@
     "retry": "Retry",
     "confirmDelete": "Delete offline data for {name}?",
     "deleteSuccess": "Offline data deleted",
-    "notSupported": "Your browser does not support offline features"
+    "notSupported": "Your browser does not support offline features",
+    "updateAvailable": "Update Available"
   },
   "OfflinePage": {
     "title": "Offline Content",

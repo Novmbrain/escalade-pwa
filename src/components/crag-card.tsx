@@ -66,6 +66,7 @@ export function CragCard({ crag, routes = [], index = 0, weather, showDownload =
                 progress={offlineDownload.downloadProgress}
                 onDownload={offlineDownload.downloadCrag}
                 onDelete={offlineDownload.deleteCrag}
+                updateInfo={offlineDownload.getUpdateInfo(crag.id)}
                 className="!w-8 !h-8 !rounded-lg"
                 style={{
                   backgroundColor: 'rgba(0, 0, 0, 0.2)',
