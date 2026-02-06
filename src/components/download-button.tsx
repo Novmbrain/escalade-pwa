@@ -12,7 +12,7 @@
 
 import { useCallback, useMemo, useEffect, useRef } from 'react'
 import { useTranslations } from 'next-intl'
-import { Download, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { Download, Check, AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import type { Crag, Route, DownloadProgress } from '@/types'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
@@ -24,6 +24,7 @@ interface DownloadButtonProps {
   progress: DownloadProgress | null
   onDownload: (crag: Crag, routes: Route[]) => Promise<void>
   onDelete?: (cragId: string) => Promise<void>
+  updateInfo?: { isStale: boolean; newRouteCount: number } | null
   variant?: 'icon' | 'badge'  // icon=仅图标按钮, badge=已下载徽章
   className?: string
   style?: React.CSSProperties
@@ -85,6 +86,7 @@ export function DownloadButton({
   progress,
   onDownload,
   onDelete,
+  updateInfo,
   variant = 'icon',
   className,
   style,
@@ -95,13 +97,16 @@ export function DownloadButton({
   // 用于跟踪之前的状态，避免重复显示 toast
   const prevStatusRef = useRef<string | null>(null)
 
-  // 计算当前状态
+  // 计算当前状态 (stale 优先级: downloading > stale > completed)
   const status = useMemo(() => {
     if (progress?.cragId === crag.id) {
       return progress.status
     }
+    if (isDownloaded && updateInfo?.isStale) {
+      return 'stale' as const
+    }
     return isDownloaded ? 'completed' : 'idle'
-  }, [progress, crag.id, isDownloaded])
+  }, [progress, crag.id, isDownloaded, updateInfo])
 
   // 计算进度百分比
   const progressPercent = useMemo(() => {
@@ -141,16 +146,35 @@ export function DownloadButton({
       return
     }
 
-    // 开始下载
-    try {
-      await onDownload(crag, routes)
-    } catch (error) {
-      console.error('Download failed:', error)
+    // stale 或 idle 状态都触发下载
+    if (status === 'idle' || status === 'stale' || status === 'failed') {
+      try {
+        await onDownload(crag, routes)
+      } catch (error) {
+        console.error('Download failed:', error)
+      }
     }
   }, [status, onDownload, onDelete, crag, routes])
 
   // 已下载徽章样式
   if (variant === 'badge' && isDownloaded && status !== 'downloading') {
+    if (status === 'stale') {
+      return (
+        <div
+          className={cn(
+            'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+            className
+          )}
+          style={{
+            backgroundColor: 'var(--theme-warning)',
+            color: 'white',
+          }}
+        >
+          <RefreshCw className="w-3 h-3" />
+          <span>{t('updateAvailable')}</span>
+        </div>
+      )
+    }
     return (
       <div
         className={cn(
@@ -182,6 +206,7 @@ export function DownloadButton({
         status === 'downloading' && 'bg-white/20 cursor-wait',
         status === 'completed' && 'bg-green-500/80',
         status === 'failed' && 'bg-red-500/80 hover:bg-red-500',
+        status === 'stale' && 'bg-amber-500/80 hover:bg-amber-500 active:scale-95',
         className
       )}
       style={{
@@ -192,6 +217,7 @@ export function DownloadButton({
         status === 'idle' ? t('download') :
         status === 'downloading' ? `${t('downloading')} ${progressPercent}%` :
         status === 'completed' ? t('downloaded') :
+        status === 'stale' ? t('updateAvailable') :
         t('failed')
       }
     >
@@ -213,6 +239,10 @@ export function DownloadButton({
 
       {status === 'completed' && (
         <Check className="w-4 h-4 text-white" />
+      )}
+
+      {status === 'stale' && (
+        <RefreshCw className="w-4 h-4 text-white" />
       )}
 
       {status === 'failed' && (

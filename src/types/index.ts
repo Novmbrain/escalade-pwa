@@ -199,7 +199,7 @@ export interface VisitStats {
 /**
  * 下载进度状态
  */
-export type DownloadStatus = 'idle' | 'downloading' | 'completed' | 'failed'
+export type DownloadStatus = 'idle' | 'downloading' | 'completed' | 'failed' | 'stale'
 
 /**
  * 下载进度信息

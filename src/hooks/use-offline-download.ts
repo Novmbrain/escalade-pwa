@@ -10,7 +10,7 @@
  * - 删除已下载的数据
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Crag, Route, DownloadProgress, OfflineCragMeta } from '@/types'
 import {
   saveCragOffline,
@@ -23,6 +23,9 @@ import {
   deleteImages,
   generateVersion,
   isIndexedDBSupported,
+  getCragsNeedingCheck,
+  updateStaleness,
+  getStaleInfo,
 } from '@/lib/offline-storage'
 
 export interface UseOfflineDownloadReturn {
@@ -35,6 +38,9 @@ export interface UseOfflineDownloadReturn {
   downloadCrag: (crag: Crag, routes: Route[]) => Promise<void>
   deleteCrag: (cragId: string, crag?: Crag, routes?: Route[]) => Promise<void>
   isDownloaded: (cragId: string) => boolean
+
+  // Staleness 检测
+  getUpdateInfo: (cragId: string) => { isStale: boolean; newRouteCount: number } | null
 
   // 辅助
   refreshList: () => void
@@ -77,6 +83,9 @@ export function useOfflineDownload(): UseOfflineDownloadReturn {
     isIndexedDBSupported() ? loadOfflineCrags() : []
   )
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null)
+
+  // staleness 检查版本号 — 递增时触发 UI 重渲染
+  const [staleVersion, setStaleVersion] = useState(0)
 
   /**
    * 刷新已下载岩场列表
@@ -161,6 +170,48 @@ export function useOfflineDownload(): UseOfflineDownloadReturn {
   }, [refreshList])
 
   /**
+   * 获取岩场的更新信息 (是否有新线路)
+   */
+  const getUpdateInfo = useCallback((cragId: string) => {
+    // staleVersion 依赖确保检查完成后重新计算
+    void staleVersion
+    return getStaleInfo(cragId)
+  }, [staleVersion])
+
+  /**
+   * 后台检查所有已下载岩场是否有更新
+   */
+  const hasCheckedRef = useRef(false)
+  useEffect(() => {
+    if (!isSupported || hasCheckedRef.current) return
+    hasCheckedRef.current = true
+
+    const checkForUpdates = async () => {
+      const cragIds = getCragsNeedingCheck()
+      if (cragIds.length === 0) return
+
+      for (const cragId of cragIds) {
+        try {
+          const res = await fetch(`/api/crags/${cragId}/version`)
+          if (!res.ok) continue
+
+          const data = await res.json()
+          if (data.success && typeof data.routeCount === 'number') {
+            updateStaleness(cragId, data.routeCount)
+          }
+        } catch {
+          // 网络失败静默忽略
+        }
+      }
+
+      // 检查完成后触发 UI 更新
+      setStaleVersion(v => v + 1)
+    }
+
+    checkForUpdates()
+  }, [isSupported])
+
+  /**
    * 删除岩场离线数据
    */
   const deleteCrag = useCallback(async (
@@ -200,6 +251,7 @@ export function useOfflineDownload(): UseOfflineDownloadReturn {
     downloadCrag,
     deleteCrag,
     isDownloaded,
+    getUpdateInfo,
     refreshList,
   }
 }

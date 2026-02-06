@@ -196,6 +196,35 @@ export async function getRoutesByCragId(cragId: string): Promise<Route[]> {
 }
 
 /**
+ * 获取指定岩场的线路数量 (轻量查询，用于 stale 检测)
+ */
+export async function getRouteCountByCragId(cragId: string): Promise<number> {
+  const start = Date.now()
+
+  try {
+    const db = await getDatabase()
+    const count = await db
+      .collection('routes')
+      .countDocuments({ cragId })
+
+    log.info(`Counted ${count} routes for crag: ${cragId}`, {
+      action: 'getRouteCountByCragId',
+      duration: Date.now() - start,
+      metadata: { cragId },
+    })
+
+    return count
+  } catch (error) {
+    log.error(`Failed to count routes for crag: ${cragId}`, error, {
+      action: 'getRouteCountByCragId',
+      duration: Date.now() - start,
+      metadata: { cragId },
+    })
+    throw error
+  }
+}
+
+/**
  * 更新线路信息
  * 支持部分更新，只更新传入的字段
  */

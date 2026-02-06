@@ -44,6 +44,8 @@ export interface OfflineCragsMeta {
       routeCount: number
       downloadedAt: string
       imageCount: number
+      serverRouteCount?: number  // 上次检查时服务端的线路数
+      lastChecked?: string       // 上次检查时间 (ISO)
     }
   }
   lastUpdated: string
@@ -271,6 +273,65 @@ export function clearMeta(): void {
     localStorage.removeItem(META_STORAGE_KEY)
   } catch {
     // 静默处理
+  }
+}
+
+// ==================== Staleness 检查 ====================
+
+/**
+ * 更新岩场的服务端线路数 (用于 stale 检测)
+ */
+export function updateStaleness(cragId: string, serverRouteCount: number): void {
+  try {
+    if (typeof localStorage === 'undefined') return
+
+    const meta = getMeta()
+    if (!(cragId in meta.crags)) return
+
+    meta.crags[cragId].serverRouteCount = serverRouteCount
+    meta.crags[cragId].lastChecked = new Date().toISOString()
+    localStorage.setItem(META_STORAGE_KEY, JSON.stringify(meta))
+  } catch {
+    // 静默处理
+  }
+}
+
+/**
+ * 检查岩场是否有更新 (服务端线路数 > 本地线路数)
+ */
+export function getStaleInfo(cragId: string): { isStale: boolean; newRouteCount: number } | null {
+  try {
+    const meta = getMeta()
+    const cragMeta = meta.crags[cragId]
+    if (!cragMeta || cragMeta.serverRouteCount == null) return null
+
+    const newRouteCount = cragMeta.serverRouteCount - cragMeta.routeCount
+    return {
+      isStale: newRouteCount > 0,
+      newRouteCount: Math.max(0, newRouteCount),
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 获取需要检查更新的岩场列表
+ * 过滤掉最近 minIntervalMs 内已检查过的岩场
+ */
+export function getCragsNeedingCheck(minIntervalMs: number = 30 * 60 * 1000): string[] {
+  try {
+    const meta = getMeta()
+    const now = Date.now()
+
+    return Object.entries(meta.crags)
+      .filter(([, data]) => {
+        if (!data.lastChecked) return true
+        return now - new Date(data.lastChecked).getTime() > minIntervalMs
+      })
+      .map(([cragId]) => cragId)
+  } catch {
+    return []
   }
 }
 
