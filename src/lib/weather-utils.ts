@@ -19,7 +19,15 @@ import {
  * @param live 当前天气数据
  * @returns 攀岩适宜度评估结果
  */
-export function evaluateClimbingCondition(live: WeatherLive): ClimbingCondition {
+interface EvaluationOptions {
+  /** 今日是否有降雨预报（岩面可能湿滑提醒） */
+  todayHasRain?: boolean
+}
+
+export function evaluateClimbingCondition(
+  live: WeatherLive,
+  options?: EvaluationOptions
+): ClimbingCondition {
   const factors: string[] = []
   let worstLevel: ClimbingSuitability = 'excellent'
 
@@ -79,6 +87,11 @@ export function evaluateClimbingCondition(live: WeatherLive): ClimbingCondition 
     factors.push(`风力: ${live.windPower}级`)
   }
   worstLevel = getWorstLevel(worstLevel, windLevel)
+
+  // 6. 降雨预报提醒 (不降低等级，仅 factor 提示)
+  if (options?.todayHasRain) {
+    factors.push('今日有降雨预报，岩面可能湿滑')
+  }
 
   // 生成描述
   const config = SUITABILITY_CONFIG[worstLevel]

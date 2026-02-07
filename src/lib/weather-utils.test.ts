@@ -145,6 +145,31 @@ describe('天气工具函数', () => {
       })
     })
 
+    describe('降雨提醒', () => {
+      it('今日有降雨预报时添加因素提示', () => {
+        const weather = createMockWeather({ weather: '晴', temperature: 20, humidity: 50, windPower: '2' })
+        const result = evaluateClimbingCondition(weather, { todayHasRain: true })
+        expect(result.factors.some(f => f.includes('降雨'))).toBe(true)
+        // 不降低等级
+        expect(result.level).toBe('excellent')
+      })
+
+      it('已是恶劣天气时不重复添加降雨提示', () => {
+        const weather = createMockWeather({ weather: '小雨' })
+        const result = evaluateClimbingCondition(weather, { todayHasRain: true })
+        expect(result.level).toBe('poor')
+        // 恶劣天气短路返回，factors 中只有天气因素
+        expect(result.factors.filter(f => f.includes('降雨')).length).toBe(0)
+      })
+
+      it('无 options 参数时保持原有行为', () => {
+        const weather = createMockWeather({ weather: '晴', temperature: 20, humidity: 50, windPower: '2' })
+        const result = evaluateClimbingCondition(weather)
+        expect(result.level).toBe('excellent')
+        expect(result.factors.some(f => f.includes('降雨'))).toBe(false)
+      })
+    })
+
     describe('综合评估', () => {
       it('返回完整的评估结构', () => {
         const weather = createMockWeather()
