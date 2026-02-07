@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { WeatherData, WeatherLive, WeatherForecast } from '@/types'
 import { evaluateClimbingCondition } from '@/lib/weather-utils'
-import { LUOYUAN_DEFAULT_COORDS } from '@/lib/weather-constants'
+import { DEFAULT_WEATHER_COORDS } from '@/lib/weather-constants'
 import { API_CACHE, HTTP_CACHE } from '@/lib/cache-config'
 import { createModuleLogger } from '@/lib/logger'
 
@@ -210,8 +210,8 @@ export async function GET(request: NextRequest) {
 
     // 解析查询参数
     const { searchParams } = new URL(request.url)
-    const lng = parseFloat(searchParams.get('lng') || String(LUOYUAN_DEFAULT_COORDS.lng))
-    const lat = parseFloat(searchParams.get('lat') || String(LUOYUAN_DEFAULT_COORDS.lat))
+    const lng = parseFloat(searchParams.get('lng') || String(DEFAULT_WEATHER_COORDS.lng))
+    const lat = parseFloat(searchParams.get('lat') || String(DEFAULT_WEATHER_COORDS.lat))
     const includeForecast = searchParams.get('forecast') !== 'false'
 
     // 验证坐标

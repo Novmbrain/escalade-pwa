@@ -7,12 +7,49 @@ import type { Coordinates } from '@/types'
  * 新增城市时只需在 CITIES 数组添加配置即可
  */
 
+// ==================== 城市配置数据 ====================
+
+/**
+ * 支持的城市列表（as const 保留字面量类型，用于自动推导 CityId）
+ *
+ * 排序规则：按数据完整度和用户量排序
+ * 新增城市：只需在此数组添加一项，CityId 类型会自动扩展
+ */
+// 注意: `as Coordinates` 和 `as boolean` 是故意的类型拓宽，
+// 防止 `as const` 将这些字段冻结为 readonly literal type，
+// 导致后续 [...CITIES_DATA] 无法赋值给 CityConfig[]。
+// 只有 `id` 字段保留为字面量类型，用于自动推导 CityId。
+const CITIES_DATA = [
+  {
+    id: 'luoyuan',
+    name: '罗源',
+    shortName: '罗源',
+    adcode: '350123',        // 罗源县 adcode
+    coordinates: {
+      lng: 119.549,          // 罗源野外抱石区域中心
+      lat: 26.489,
+    } as Coordinates,
+    available: true as boolean,
+  },
+  {
+    id: 'xiamen',
+    name: '厦门',
+    shortName: '厦门',
+    adcode: '350200',        // 厦门市 adcode
+    coordinates: {
+      lng: 118.089,          // 厦门市中心
+      lat: 24.479,
+    } as Coordinates,
+    available: false as boolean, // 数据待录入
+  },
+] as const
+
 // ==================== 类型定义 ====================
 
 /**
- * 城市 ID 类型（用于类型约束）
+ * 城市 ID 类型（自动从 CITIES_DATA 推导，新增城市时无需手动维护）
  */
-export type CityId = 'luoyuan' | 'xiamen'
+export type CityId = typeof CITIES_DATA[number]['id']
 
 /**
  * 城市配置接口
@@ -26,37 +63,10 @@ export interface CityConfig {
   available: boolean        // 是否有数据可用
 }
 
-// ==================== 城市配置数据 ====================
-
 /**
  * 支持的城市列表
- *
- * 排序规则：按数据完整度和用户量排序
  */
-export const CITIES: CityConfig[] = [
-  {
-    id: 'luoyuan',
-    name: '罗源',
-    shortName: '罗源',
-    adcode: '350123',        // 罗源县 adcode
-    coordinates: {
-      lng: 119.549,          // 罗源野外抱石区域中心
-      lat: 26.489,
-    },
-    available: true,
-  },
-  {
-    id: 'xiamen',
-    name: '厦门',
-    shortName: '厦门',
-    adcode: '350200',        // 厦门市 adcode
-    coordinates: {
-      lng: 118.089,          // 厦门市中心
-      lat: 24.479,
-    },
-    available: false,        // 数据待录入
-  },
-]
+export const CITIES: CityConfig[] = [...CITIES_DATA]
 
 // ==================== 工具函数 ====================
 
