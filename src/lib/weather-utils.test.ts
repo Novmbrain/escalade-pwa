@@ -8,9 +8,10 @@
  * - 边界条件
  */
 import { describe, it, expect } from 'vitest'
-import type { WeatherLive } from '@/types'
+import type { WeatherLive, WeatherForecast } from '@/types'
 import {
   evaluateClimbingCondition,
+  evaluateForecastCondition,
   formatWeekday,
   formatShortDate,
   isToday,
@@ -229,6 +230,57 @@ describe('天气工具函数', () => {
       expect(getSuitabilityIcon('good')).toBe('🔵')
       expect(getSuitabilityIcon('fair')).toBe('🟡')
       expect(getSuitabilityIcon('poor')).toBe('🔴')
+    })
+  })
+
+  describe('evaluateForecastCondition', () => {
+    function createMockForecast(overrides: Partial<WeatherForecast> = {}): WeatherForecast {
+      return {
+        date: '2026-02-07',
+        week: '6',
+        dayWeather: '晴',
+        nightWeather: '多云',
+        dayTemp: 20,
+        nightTemp: 12,
+        dayWind: '东南',
+        nightWind: '东',
+        dayPower: '2',
+        nightPower: '1',
+        ...overrides,
+      }
+    }
+
+    it('晴天预报评估为 excellent', () => {
+      const forecast = createMockForecast({ dayWeather: '晴', dayTemp: 20, dayPower: '2' })
+      const result = evaluateForecastCondition(forecast)
+      expect(result.level).toBe('excellent')
+    })
+
+    it('雨天预报评估为 poor', () => {
+      const forecast = createMockForecast({ dayWeather: '小雨' })
+      const result = evaluateForecastCondition(forecast)
+      expect(result.level).toBe('poor')
+    })
+
+    it('极端温度预报评估为 poor', () => {
+      const forecast = createMockForecast({ dayTemp: 40 })
+      const result = evaluateForecastCondition(forecast)
+      expect(result.level).toBe('poor')
+    })
+
+    it('强风预报降低评估等级', () => {
+      const forecast = createMockForecast({ dayPower: '6' })
+      const result = evaluateForecastCondition(forecast)
+      expect(['fair', 'poor']).toContain(result.level)
+    })
+
+    it('返回完整 ClimbingCondition 结构', () => {
+      const forecast = createMockForecast()
+      const result = evaluateForecastCondition(forecast)
+      expect(result).toHaveProperty('level')
+      expect(result).toHaveProperty('label')
+      expect(result).toHaveProperty('description')
+      expect(result).toHaveProperty('factors')
     })
   })
 
