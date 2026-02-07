@@ -77,6 +77,60 @@ describe('useWeather', () => {
     expect(result.current.error).toBe(true)
   })
 
+  it('should pass adcode as query param', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockWeatherData),
+    })
+
+    renderHook(() => useWeather({ adcode: '350200' }))
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/weather?adcode=350200')
+    })
+  })
+
+  it('should prefer adcode over coordinates', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockWeatherData),
+    })
+
+    renderHook(() =>
+      useWeather({ adcode: '350200', coordinates: { lng: 119.5, lat: 26.4 } })
+    )
+
+    await waitFor(() => {
+      const calledUrl = mockFetch.mock.calls[0][0] as string
+      expect(calledUrl).toContain('adcode=350200')
+      expect(calledUrl).not.toContain('lng=')
+      expect(calledUrl).not.toContain('lat=')
+    })
+  })
+
+  it('should refetch when adcode changes', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockWeatherData),
+    })
+
+    const { rerender } = renderHook(
+      ({ adcode }: { adcode?: string }) => useWeather({ adcode }),
+      { initialProps: { adcode: '350123' } }
+    )
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    rerender({ adcode: '350200' })
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(mockFetch).toHaveBeenLastCalledWith('/api/weather?adcode=350200')
+    })
+  })
+
   it('should handle non-ok responses', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500 })
 
