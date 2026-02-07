@@ -1,4 +1,4 @@
-import type { ClimbingSuitability, ClimbingCondition, WeatherLive } from '@/types'
+import type { ClimbingSuitability, ClimbingCondition, WeatherLive, WeatherForecast } from '@/types'
 import {
   CLIMBING_THRESHOLDS,
   BAD_WEATHER_KEYWORDS,
@@ -97,6 +97,22 @@ export function evaluateClimbingCondition(live: WeatherLive): ClimbingCondition 
     description,
     factors,
   }
+}
+
+/**
+ * 评估预报天的攀岩适宜度
+ * 使用白天天气数据，湿度因预报 API 不提供而假设为中性值 (50%)
+ */
+export function evaluateForecastCondition(forecast: WeatherForecast): ClimbingCondition {
+  const syntheticLive: WeatherLive = {
+    weather: forecast.dayWeather,
+    temperature: forecast.dayTemp,
+    humidity: 50, // 高德预报不含湿度，假设中性值
+    windDirection: forecast.dayWind,
+    windPower: forecast.dayPower,
+    reportTime: forecast.date,
+  }
+  return evaluateClimbingCondition(syntheticLive)
 }
 
 /**
