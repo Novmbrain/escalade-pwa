@@ -7,8 +7,9 @@ import {
   BAD_WEATHER_KEYWORDS,
   IDEAL_WEATHER_KEYWORDS,
   parseWindPower,
-  LUOYUAN_DEFAULT_COORDS,
+  DEFAULT_WEATHER_COORDS,
 } from './weather-constants'
+import { getCityById, DEFAULT_CITY_ID } from './city-config'
 
 describe('weather-constants', () => {
   describe('getWeatherIcon', () => {
@@ -200,17 +201,25 @@ describe('weather-constants', () => {
     })
   })
 
-  describe('LUOYUAN_DEFAULT_COORDS 常量', () => {
-    it('应该包含有效的经纬度坐标', () => {
-      expect(LUOYUAN_DEFAULT_COORDS.lng).toBeCloseTo(119.5495, 4)
-      expect(LUOYUAN_DEFAULT_COORDS.lat).toBeCloseTo(26.4893, 4)
+  describe('DEFAULT_WEATHER_COORDS 常量', () => {
+    it('应该从城市配置中读取坐标', () => {
+      // 默认城市是罗源，坐标应该与 city-config 中的一致
+      expect(DEFAULT_WEATHER_COORDS.lng).toBeCloseTo(119.549, 2)
+      expect(DEFAULT_WEATHER_COORDS.lat).toBeCloseTo(26.489, 2)
+    })
+
+    it('坐标应该与 city-config 中默认城市的坐标精确匹配', () => {
+      const defaultCity = getCityById(DEFAULT_CITY_ID)
+      expect(defaultCity).toBeDefined()
+      expect(DEFAULT_WEATHER_COORDS.lng).toBe(defaultCity!.coordinates.lng)
+      expect(DEFAULT_WEATHER_COORDS.lat).toBe(defaultCity!.coordinates.lat)
     })
 
     it('经纬度应该在有效范围内', () => {
-      expect(LUOYUAN_DEFAULT_COORDS.lng).toBeGreaterThan(-180)
-      expect(LUOYUAN_DEFAULT_COORDS.lng).toBeLessThan(180)
-      expect(LUOYUAN_DEFAULT_COORDS.lat).toBeGreaterThan(-90)
-      expect(LUOYUAN_DEFAULT_COORDS.lat).toBeLessThan(90)
+      expect(DEFAULT_WEATHER_COORDS.lng).toBeGreaterThan(-180)
+      expect(DEFAULT_WEATHER_COORDS.lng).toBeLessThan(180)
+      expect(DEFAULT_WEATHER_COORDS.lat).toBeGreaterThan(-90)
+      expect(DEFAULT_WEATHER_COORDS.lat).toBeLessThan(90)
     })
   })
 })

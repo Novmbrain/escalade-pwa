@@ -68,6 +68,37 @@ export async function getAllCrags(): Promise<Crag[]> {
 }
 
 /**
+ * 根据城市 ID 获取岩场列表
+ */
+export async function getCragsByCityId(cityId: string): Promise<Crag[]> {
+  const start = Date.now()
+
+  try {
+    const db = await getDatabase()
+    const docs = await db
+      .collection('crags')
+      .find({ cityId })
+      .sort({ createdAt: -1 })
+      .toArray()
+
+    log.info(`Fetched ${docs.length} crags for city: ${cityId}`, {
+      action: 'getCragsByCityId',
+      duration: Date.now() - start,
+      metadata: { cityId },
+    })
+
+    return docs.map(toCrag)
+  } catch (error) {
+    log.error(`Failed to fetch crags for city: ${cityId}`, error, {
+      action: 'getCragsByCityId',
+      duration: Date.now() - start,
+      metadata: { cityId },
+    })
+    throw error
+  }
+}
+
+/**
  * 根据 ID 获取单个岩场
  */
 export async function getCragById(id: string): Promise<Crag | null> {

@@ -170,6 +170,39 @@ describe('城市配置', () => {
     })
   })
 
+  describe('CityId 自动推导 (as const)', () => {
+    it('CITIES 数组的 id 应涵盖所有 CityId 值', () => {
+      const cityIds = CITIES.map((c) => c.id)
+      // 验证已知城市都在数组中
+      expect(cityIds).toContain('luoyuan')
+      expect(cityIds).toContain('xiamen')
+    })
+
+    it('CITIES 是可变数组（非 readonly）', () => {
+      // as const + spread 后应得到普通数组
+      expect(Array.isArray(CITIES)).toBe(true)
+      // 验证可以使用数组方法（如 filter）
+      const available = CITIES.filter((c) => c.available)
+      expect(available.length).toBeGreaterThan(0)
+    })
+
+    it('每个 CITIES 元素的 id 都通过 isValidCityId 校验', () => {
+      CITIES.forEach((city) => {
+        expect(isValidCityId(city.id)).toBe(true)
+      })
+    })
+
+    it('CITIES 中无重复 id', () => {
+      const ids = CITIES.map((c) => c.id)
+      expect(new Set(ids).size).toBe(ids.length)
+    })
+
+    it('CITIES 中无重复 adcode', () => {
+      const adcodes = CITIES.map((c) => c.adcode)
+      expect(new Set(adcodes).size).toBe(adcodes.length)
+    })
+  })
+
   describe('isValidCityId', () => {
     it('有效的城市 ID 返回 true', () => {
       expect(isValidCityId('luoyuan')).toBe(true)

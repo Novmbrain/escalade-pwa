@@ -1,4 +1,5 @@
 import type { ClimbingSuitability } from '@/types'
+import { getCityById, DEFAULT_CITY_ID } from './city-config'
 
 /**
  * 天气图标映射
@@ -201,9 +202,10 @@ export { API_CACHE } from './cache-config'
 export { API_CACHE as WEATHER_CACHE_TTL_CONFIG } from './cache-config'
 
 /**
- * 罗源县默认坐标 (用于区域天气)
+ * 默认天气查询坐标（从城市配置读取，不再硬编码）
  */
-export const LUOYUAN_DEFAULT_COORDS = {
-  lng: 119.5495,
-  lat: 26.4893,
-}
+export const DEFAULT_WEATHER_COORDS = (() => {
+  const city = getCityById(DEFAULT_CITY_ID)
+  // fallback 坐标与 city-config.ts 中罗源坐标保持一致
+  return city?.coordinates ?? { lng: 119.549, lat: 26.489 }
+})()
