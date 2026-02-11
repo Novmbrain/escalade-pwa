@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@/test/utils'
+import { SWRConfig } from 'swr'
 import { WeatherCard } from './weather-card'
 import type { WeatherData } from '@/types'
 
@@ -69,6 +70,15 @@ const mockWeatherData: WeatherData = {
 // Mock fetch
 const mockFetch = vi.fn()
 
+/** 使用 SWRConfig 包裹，清空缓存避免跨测试污染 */
+function renderWithSWR(ui: React.ReactElement) {
+  return render(
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      {ui}
+    </SWRConfig>
+  )
+}
+
 describe('WeatherCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -84,7 +94,7 @@ describe('WeatherCard', () => {
       // 永不 resolve 的 promise 保持 loading 状态
       mockFetch.mockImplementation(() => new Promise(() => {}))
 
-      const { container } = render(<WeatherCard />)
+      const { container } = renderWithSWR(<WeatherCard adcode="350123" />)
 
       // 检查骨架屏元素
       expect(container.querySelector('.skeleton-shimmer')).toBeInTheDocument()
@@ -93,7 +103,7 @@ describe('WeatherCard', () => {
     it('应该有 loading 动画', () => {
       mockFetch.mockImplementation(() => new Promise(() => {}))
 
-      const { container } = render(<WeatherCard />)
+      const { container } = renderWithSWR(<WeatherCard adcode="350123" />)
 
       expect(container.querySelector('.animate-fade-in-up')).toBeInTheDocument()
     })
@@ -103,11 +113,11 @@ describe('WeatherCard', () => {
     it('API 错误时应返回 null', async () => {
       mockFetch.mockRejectedValueOnce(new Error('API Error'))
 
-      const { container } = render(<WeatherCard />)
+      const { container } = renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
-        // 错误时组件返回 null
-        expect(container.firstChild).toBeNull()
+        expect(container.querySelector('.animate-fade-in-up')).not.toBeInTheDocument()
+        expect(container.querySelector('.skeleton-shimmer')).not.toBeInTheDocument()
       })
     })
 
@@ -117,10 +127,11 @@ describe('WeatherCard', () => {
         status: 500,
       })
 
-      const { container } = render(<WeatherCard />)
+      const { container } = renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
-        expect(container.firstChild).toBeNull()
+        expect(container.querySelector('.animate-fade-in-up')).not.toBeInTheDocument()
+        expect(container.querySelector('.skeleton-shimmer')).not.toBeInTheDocument()
       })
     })
   })
@@ -134,7 +145,7 @@ describe('WeatherCard', () => {
     })
 
     it('应该显示当前天气数据', async () => {
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         expect(screen.getByText('25°')).toBeInTheDocument()
@@ -143,7 +154,7 @@ describe('WeatherCard', () => {
     })
 
     it('应该显示湿度信息', async () => {
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         // Mock useTranslations 使用参数替换: humidityValue -> "humidityValue" with {value: 60}
@@ -152,7 +163,7 @@ describe('WeatherCard', () => {
     })
 
     it('应该显示风向风力', async () => {
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         // Mock useTranslations: windValue with {direction: 东南, power: 3}
@@ -161,7 +172,7 @@ describe('WeatherCard', () => {
     })
 
     it('应该显示攀岩适宜度', async () => {
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         // Mock useTranslations: climbingLabel with {level: excellent}
@@ -170,7 +181,7 @@ describe('WeatherCard', () => {
     })
 
     it('应该显示适宜度描述', async () => {
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         // Mock useTranslations: excellentDesc
@@ -179,7 +190,7 @@ describe('WeatherCard', () => {
     })
 
     it('应该显示标题', async () => {
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         // Mock useTranslations: liveWeather
@@ -197,7 +208,7 @@ describe('WeatherCard', () => {
     })
 
     it('应该渲染 3 天天气预报', async () => {
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         // Mock useTranslations: futureWeather
@@ -229,7 +240,7 @@ describe('WeatherCard', () => {
         json: () => Promise.resolve(dataWithClimbing),
       })
 
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         // good = 🔵, should appear for each forecast item
@@ -249,7 +260,7 @@ describe('WeatherCard', () => {
         json: () => Promise.resolve(dataWithoutForecasts),
       })
 
-      render(<WeatherCard />)
+      renderWithSWR(<WeatherCard adcode="350123" />)
 
       await waitFor(() => {
         expect(screen.getByText('25°')).toBeInTheDocument()
@@ -267,7 +278,7 @@ describe('WeatherCard', () => {
         json: () => Promise.resolve(mockWeatherData),
       })
 
-      render(
+      renderWithSWR(
         <WeatherCard coordinates={{ lng: 119.5495, lat: 26.4893 }} />
       )
 
@@ -281,17 +292,10 @@ describe('WeatherCard', () => {
       })
     })
 
-    it('无坐标时不应传递参数', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockWeatherData),
-      })
+    it('无参数时不发起请求', () => {
+      renderWithSWR(<WeatherCard />)
 
-      render(<WeatherCard />)
-
-      await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith('/api/weather?')
-      })
+      expect(mockFetch).not.toHaveBeenCalled()
     })
   })
 
@@ -302,7 +306,7 @@ describe('WeatherCard', () => {
         json: () => Promise.resolve(mockWeatherData),
       })
 
-      const { container } = render(<WeatherCard delay={100} />)
+      const { container } = renderWithSWR(<WeatherCard adcode="350123" delay={100} />)
 
       await waitFor(() => {
         const card = container.firstChild as HTMLElement
