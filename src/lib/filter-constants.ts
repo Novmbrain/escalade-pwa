@@ -43,6 +43,7 @@ export function getGradesByValues(values: string[]): string[] {
  * URL 参数名称常量
  */
 export const FILTER_PARAMS = {
+  CITY: 'city',
   CRAG: 'crag',
   GRADE: 'grade',
   QUERY: 'q',

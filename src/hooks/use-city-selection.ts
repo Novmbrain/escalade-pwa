@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   CITIES,
   DEFAULT_CITY_ID,
+  CITY_COOKIE_NAME,
   isValidCityId,
   type CityId,
   type CityConfig,
@@ -14,6 +15,11 @@ import {
 const STORAGE_KEY = 'selected-city'
 const FIRST_VISIT_KEY = 'city-first-visit'
 const SESSION_VISIT_KEY = 'session-visit-recorded' // sessionStorage: 单会话去重
+
+/** 同步写入 cookie，供服务端 Server Component 读取 */
+function setCityCookie(id: string) {
+  document.cookie = `${CITY_COOKIE_NAME}=${id}; path=/; max-age=31536000; samesite=lax`
+}
 
 // ==================== 类型 ====================
 
@@ -99,10 +105,12 @@ export function useCitySelection(): UseCitySelectionReturn {
       if (hasValidCachedCity) {
         // 已有存储的城市，直接使用
         setCityId(storedCity)
+        setCityCookie(storedCity)
       } else if (geoData?.cityId && isValidCityId(geoData.cityId)) {
         // 使用 geo API 检测到的城市
         setCityId(geoData.cityId)
         localStorage.setItem(STORAGE_KEY, geoData.cityId)
+        setCityCookie(geoData.cityId)
       }
 
       setIsLoading(false)
@@ -115,6 +123,7 @@ export function useCitySelection(): UseCitySelectionReturn {
   const setCity = useCallback((id: CityId) => {
     setCityId(id)
     localStorage.setItem(STORAGE_KEY, id)
+    setCityCookie(id)
     // 切换后清除首次访问提示
     setIsFirstVisit(false)
   }, [])

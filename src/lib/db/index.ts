@@ -72,7 +72,7 @@ export const getAllCrags = cache(_getAllCrags)
 /**
  * 根据城市 ID 获取岩场列表
  */
-export async function getCragsByCityId(cityId: string): Promise<Crag[]> {
+async function _getCragsByCityId(cityId: string): Promise<Crag[]> {
   const start = Date.now()
 
   try {
@@ -99,6 +99,7 @@ export async function getCragsByCityId(cityId: string): Promise<Crag[]> {
     throw error
   }
 }
+export const getCragsByCityId = cache(_getCragsByCityId)
 
 /**
  * 根据 ID 获取单个岩场
@@ -231,6 +232,41 @@ async function _getRoutesByCragId(cragId: string): Promise<Route[]> {
   }
 }
 export const getRoutesByCragId = cache(_getRoutesByCragId)
+
+/**
+ * 根据城市 ID 获取所有线路
+ * 两步查询：先获取城市的岩场列表，再用 $in 查询这些岩场的线路
+ */
+async function _getRoutesByCityId(cityId: string): Promise<Route[]> {
+  const start = Date.now()
+
+  try {
+    const crags = await getCragsByCityId(cityId)
+    const cragIds = crags.map((c) => c.id)
+
+    const db = await getDatabase()
+    const docs = await db
+      .collection('routes')
+      .find({ cragId: { $in: cragIds } })
+      .toArray()
+
+    log.info(`Fetched ${docs.length} routes for city: ${cityId}`, {
+      action: 'getRoutesByCityId',
+      duration: Date.now() - start,
+      metadata: { cityId, cragCount: cragIds.length },
+    })
+
+    return docs.map(toRoute)
+  } catch (error) {
+    log.error(`Failed to fetch routes for city: ${cityId}`, error, {
+      action: 'getRoutesByCityId',
+      duration: Date.now() - start,
+      metadata: { cityId },
+    })
+    throw error
+  }
+}
+export const getRoutesByCityId = cache(_getRoutesByCityId)
 
 /**
  * 获取指定岩场的线路数量 (轻量查询，用于 stale 检测)

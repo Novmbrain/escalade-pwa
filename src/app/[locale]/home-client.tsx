@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { CragCard } from '@/components/crag-card'
 import { FloatingSearch } from '@/components/floating-search'
@@ -20,11 +21,13 @@ const EMPTY_ROUTES: Route[] = []
 interface HomePageClientProps {
   crags: Crag[]
   allRoutes: Route[]
+  serverCityId: string
 }
 
-export default function HomePageClient({ crags, allRoutes }: HomePageClientProps) {
+export default function HomePageClient({ crags, allRoutes, serverCityId }: HomePageClientProps) {
   const t = useTranslations('HomePage')
   const tSearch = useTranslations('Search')
+  const router = useRouter()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
   // 城市选择
@@ -33,21 +36,28 @@ export default function HomePageClient({ crags, allRoutes }: HomePageClientProps
     city,
     cities,
     setCity,
+    isLoading,
     isFirstVisit,
     dismissFirstVisitHint,
   } = useCitySelection()
 
-  // 根据城市筛选岩场
-  const filteredCrags = useMemo(() => {
-    // 如果岩场没有 cityId 字段（兼容旧数据），默认归属罗源
-    return crags.filter((crag) => (crag.cityId || 'luoyuan') === cityId)
-  }, [crags, cityId])
+  // 城市切换后刷新服务端数据
+  const handleCityChange = (id: typeof cityId) => {
+    setCity(id)
+    // cookie 已在 setCity 中同步，触发服务端重新渲染
+    router.refresh()
+  }
 
-  // 根据城市筛选线路（用于搜索）
-  const filteredRoutes = useMemo(() => {
-    const cragIds = new Set(filteredCrags.map((c) => c.id))
-    return allRoutes.filter((route) => cragIds.has(route.cragId))
-  }, [allRoutes, filteredCrags])
+  // 首次 hydration 后，如果客户端城市与服务端不一致，自动刷新
+  const hasCheckedRef = useRef(false)
+  useEffect(() => {
+    if (!isLoading && !hasCheckedRef.current) {
+      hasCheckedRef.current = true
+      if (cityId !== serverCityId) {
+        router.refresh()
+      }
+    }
+  }, [isLoading, cityId, serverCityId, router])
 
   // 获取天气数据 (用于卡片角标，不需要预报，使用城市 adcode)
   const { weather } = useWeather({ adcode: city.adcode, forecast: false })
@@ -55,17 +65,17 @@ export default function HomePageClient({ crags, allRoutes }: HomePageClientProps
   // 预计算按 cragId 分组的线路 Map，避免渲染时重复 filter
   const routesByCrag = useMemo(() => {
     const map = new Map<string, Route[]>()
-    filteredRoutes.forEach(r => {
+    allRoutes.forEach(r => {
       const arr = map.get(r.cragId) || []
       arr.push(r)
       map.set(r.cragId, arr)
     })
     return map
-  }, [filteredRoutes])
+  }, [allRoutes])
 
   // 不限制搜索结果数量，由 SearchDrawer 内部控制显示
   const { searchQuery, setSearchQuery, searchResults, clearSearch } =
-    useRouteSearch(filteredRoutes, { limit: 0 })
+    useRouteSearch(allRoutes, { limit: 0 })
 
   const handleCloseSearch = () => {
     setIsSearchOpen(false)
@@ -88,7 +98,7 @@ export default function HomePageClient({ crags, allRoutes }: HomePageClientProps
             <CitySelector
               currentCity={city}
               cities={cities}
-              onCityChange={setCity}
+              onCityChange={handleCityChange}
               showHint={isFirstVisit}
               onDismissHint={dismissFirstVisitHint}
             />
@@ -105,16 +115,16 @@ export default function HomePageClient({ crags, allRoutes }: HomePageClientProps
       {/* 岩场列表（可滚动区域） */}
       <main className="flex-1 overflow-y-auto pb-36">
         {/* 天气条 - 仅在有岩场数据时显示 */}
-        {filteredCrags.length > 0 && <WeatherStrip adcode={city.adcode} />}
+        {crags.length > 0 && <WeatherStrip adcode={city.adcode} />}
 
         {/* PWA 安装提示 - 仅在有岩场数据时显示 */}
-        {filteredCrags.length > 0 && <InstallPrompt />}
+        {crags.length > 0 && <InstallPrompt />}
 
         {/* 根据城市数据可用性显示内容 */}
-        {city.available && filteredCrags.length > 0 ? (
+        {city.available && crags.length > 0 ? (
           <>
             <div className="space-y-3">
-              {filteredCrags.map((crag, index) => (
+              {crags.map((crag, index) => (
                 <CragCard
                   key={crag.id}
                   crag={crag}
@@ -138,7 +148,7 @@ export default function HomePageClient({ crags, allRoutes }: HomePageClientProps
       </main>
 
       {/* 浮动搜索框 - 仅在有岩场数据时显示 */}
-      {filteredCrags.length > 0 && (
+      {crags.length > 0 && (
         <FloatingSearch onClick={() => setIsSearchOpen(true)} placeholder={tSearch('placeholder')} />
       )}
 
@@ -149,8 +159,9 @@ export default function HomePageClient({ crags, allRoutes }: HomePageClientProps
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         results={searchResults}
-        crags={filteredCrags}
-        allRoutes={filteredRoutes}
+        crags={crags}
+        allRoutes={allRoutes}
+        cityId={cityId}
       />
 
       {/* 底部导航栏 */}

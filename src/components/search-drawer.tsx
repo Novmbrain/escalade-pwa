@@ -20,6 +20,7 @@ interface SearchDrawerProps {
   results: Route[]
   crags: Crag[]
   allRoutes: Route[]
+  cityId?: string
 }
 
 const MAX_DISPLAY_RESULTS = 8
@@ -32,6 +33,7 @@ export function SearchDrawer({
   results,
   crags,
   allRoutes,
+  cityId,
 }: SearchDrawerProps) {
   const t = useTranslations('Search')
   const tIntro = useTranslations('Intro')
@@ -74,16 +76,17 @@ export function SearchDrawer({
     setSelectedRoute(route)
   }, [])
 
-  // 跳转到线路页面并带上搜索词
+  // 跳转到线路页面并带上搜索词（携带城市参数）
   const handleViewAll = () => {
     onClose()
-    router.push(`/route?q=${encodeURIComponent(searchQuery)}`)
+    const cityParam = cityId ? `city=${cityId}&` : ''
+    router.push(`/route?${cityParam}q=${encodeURIComponent(searchQuery)}`)
   }
 
-  // 跳转到线路筛选页面
+  // 跳转到线路筛选页面（携带城市参数）
   const handleGoToRoutes = () => {
     onClose()
-    router.push('/route')
+    router.push(cityId ? `/route?city=${cityId}` : '/route')
   }
 
   return (

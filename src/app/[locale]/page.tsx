@@ -1,24 +1,25 @@
-import { getAllCrags, getAllRoutes } from '@/lib/db'
+import { cookies } from 'next/headers'
+import { getCragsByCityId, getRoutesByCityId } from '@/lib/db'
+import { isValidCityId, DEFAULT_CITY_ID, CITY_COOKIE_NAME } from '@/lib/city-config'
 import HomePageClient from './home-client'
-
-// ISR: 每月重新验证 - 配置见 @/lib/cache-config.ts
-export const revalidate = 2592000 // 30 天 (秒)
 
 /**
  * 首页 - 岩场列表
  *
- * 注意：这里故意不使用 Suspense 包裹 HomePageClient
- * 因为 ISR 缓存确保数据获取几乎是即时的，
- * 如果使用 Suspense，每次导航都会短暂触发 fallback，导致骨架屏闪烁。
- *
- * loading.tsx 仅用于首次加载（冷启动）时的路由级加载状态。
- * 后续导航将直接从 ISR 缓存返回完整 HTML，无需骨架屏。
+ * 使用 cookie 读取用户选择的城市，服务端直接过滤数据。
+ * cookies() 使页面变为动态渲染，ISR revalidate 不再需要。
+ * 缓解措施：PWA SW NetworkFirst 策略 + React cache() 请求内去重。
  */
 export default async function HomePage() {
-  // 并行获取所有数据
+  // 从 cookie 读取城市，无效值兜底默认城市
+  const cookieStore = await cookies()
+  const rawCity = cookieStore.get(CITY_COOKIE_NAME)?.value
+  const cityId = rawCity && isValidCityId(rawCity) ? rawCity : DEFAULT_CITY_ID
+
+  // 并行获取城市级数据
   const [crags, allRoutes] = await Promise.all([
-    getAllCrags(),
-    getAllRoutes(),
+    getCragsByCityId(cityId),
+    getRoutesByCityId(cityId),
   ])
 
   // 裁剪 Route 数据，去除首页不需要的大字段 (description, image, setter)
@@ -27,5 +28,5 @@ export default async function HomePage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const lightRoutes = allRoutes.map(({ description, image, setter, ...rest }) => rest)
 
-  return <HomePageClient crags={crags} allRoutes={lightRoutes} />
+  return <HomePageClient crags={crags} allRoutes={lightRoutes} serverCityId={cityId} />
 }
