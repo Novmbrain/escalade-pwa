@@ -215,7 +215,8 @@ doc/
 ├── PROJECT_INDEX.md            # 项目索引 (自动生成)
 ├── FACE_IMAGE_CACHE_ARCHITECTURE.md  # 缓存架构文档
 └── data-flow/                  # 数据流文档
-    └── ROUTE_RENDERING.md      # Bloc 线路渲染数据流
+    ├── ROUTE_RENDERING.md      # Bloc 线路渲染数据流
+    └── CITY_CRAG_ISOLATION.md  # 城市→岩场数据隔离与多城市扩展
 ```
 
 ## Core Data Types

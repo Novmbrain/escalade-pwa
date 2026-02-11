@@ -76,6 +76,11 @@ export const CITIES: CityConfig[] = [...CITIES_DATA]
 export const DEFAULT_CITY_ID: CityId = 'luoyuan'
 
 /**
+ * 城市选择 cookie 名称（服务端读取用）
+ */
+export const CITY_COOKIE_NAME = 'city'
+
+/**
  * 根据 ID 获取城市配置
  */
 export function getCityById(cityId: CityId): CityConfig | undefined {

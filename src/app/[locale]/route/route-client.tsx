@@ -43,6 +43,7 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
   }, [])
 
   // 从 URL 读取筛选状态
+  const selectedCity = searchParams.get(FILTER_PARAMS.CITY) || ''
   const selectedCrag = searchParams.get(FILTER_PARAMS.CRAG) || ''
   const gradeParam = searchParams.get(FILTER_PARAMS.GRADE)
   const selectedGrades = useMemo(
@@ -52,6 +53,18 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
   const searchQuery = searchParams.get(FILTER_PARAMS.QUERY) || ''
   const sortDirection = (searchParams.get(FILTER_PARAMS.SORT) as SortDirection) || DEFAULT_SORT_DIRECTION
   const selectedFace = searchParams.get(FILTER_PARAMS.FACE) || null
+
+  // 城市级预过滤（在其他 filter 之前执行）
+  const cityFilteredCrags = useMemo(() => {
+    if (!selectedCity) return crags
+    return crags.filter(c => (c.cityId || 'luoyuan') === selectedCity)
+  }, [crags, selectedCity])
+
+  const cityFilteredRoutes = useMemo(() => {
+    if (!selectedCity) return routes
+    const cragIds = new Set(cityFilteredCrags.map(c => c.id))
+    return routes.filter(r => cragIds.has(r.cragId))
+  }, [routes, cityFilteredCrags, selectedCity])
 
   // 更新 URL 参数
   const updateSearchParams = useCallback(
@@ -146,7 +159,7 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
     setIsDetailDrawerOpen(true)
   }, [])
 
-  // 获取选中线路对应的岩场
+  // 获取选中线路对应的岩场（从全量 crags 查找，因为详情抽屉不受城市过滤影响）
   const selectedCragData = useMemo(() => {
     if (!selectedRoute) return null
     return crags.find((c) => c.id === selectedRoute.cragId) || null
@@ -154,8 +167,8 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
 
   // 获取同岩面的线路
   const siblingRoutes = useMemo(() => {
-    return getSiblingRoutes(selectedRoute, routes)
-  }, [routes, selectedRoute])
+    return getSiblingRoutes(selectedRoute, cityFilteredRoutes)
+  }, [cityFilteredRoutes, selectedRoute])
 
   // 处理线路切换
   const handleRouteChange = useCallback((route: Route) => {
@@ -193,7 +206,7 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
 
   // 筛选逻辑
   const filteredRoutes = useMemo(() => {
-    let result = routes
+    let result = cityFilteredRoutes
 
     if (selectedCrag) {
       result = result.filter((r) => r.cragId === selectedCrag)
@@ -221,7 +234,7 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
     })
 
     return result
-  }, [routes, selectedCrag, selectedFace, selectedGrades, searchQuery, sortDirection])
+  }, [cityFilteredRoutes, selectedCrag, selectedFace, selectedGrades, searchQuery, sortDirection])
 
   return (
     <>
@@ -234,7 +247,7 @@ export default function RouteListClient({ routes, crags }: RouteListClientProps)
       >
         {/* 顶部筛选栏 — 全宽 */}
         <RouteFilterBar
-          crags={crags}
+          crags={cityFilteredCrags}
           selectedCrag={selectedCrag}
           onCragSelect={handleCragSelect}
           selectedFace={selectedFace}
