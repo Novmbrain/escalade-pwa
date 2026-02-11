@@ -7,6 +7,14 @@ import { render, screen, fireEvent, waitFor } from '@/test/utils'
 import { RouteDetailDrawer } from './route-detail-drawer'
 import type { Route, Crag } from '@/types'
 
+// Topo 叠加层 — stub 为带 data-testid 的 div，避免 SVG 渲染
+vi.mock('@/components/topo-line-overlay', () => ({
+  TopoLineOverlay: () => <div data-testid="topo-line-overlay" />,
+}))
+vi.mock('@/components/multi-topo-line-overlay', () => ({
+  MultiTopoLineOverlay: () => <div data-testid="multi-topo-line-overlay" />,
+}))
+
 // Mock 线路数据
 const mockRoute: Route = {
   id: 1,
@@ -36,6 +44,23 @@ const mockRouteNoBeta: Route = {
   grade: 'V3',
   cragId: 'yuan-tong-si',
   area: 'B 区',
+}
+
+const topoLine = [
+  { x: 0.1, y: 0.9 },
+  { x: 0.3, y: 0.7 },
+  { x: 0.5, y: 0.4 },
+  { x: 0.7, y: 0.1 },
+]
+
+const mockRouteWithTopo: Route = {
+  id: 10,
+  name: '星尘',
+  grade: 'V4',
+  cragId: 'yuan-tong-si',
+  area: 'A 区',
+  faceId: 'face-1',
+  topoLine,
 }
 
 const mockCrag: Crag = {
@@ -244,6 +269,62 @@ describe('RouteDetailDrawer', () => {
       expect(gradeBadge).toHaveStyle({
         borderRadius: 'var(--theme-radius-full)',
       })
+    })
+  })
+
+  describe('Topo 线路叠加', () => {
+    it('有 topoLine 时图片加载后应渲染 TopoLineOverlay', async () => {
+      render(
+        <RouteDetailDrawer
+          {...defaultProps}
+          route={mockRouteWithTopo}
+        />
+      )
+
+      // 图片加载前不应有 overlay
+      expect(screen.queryByTestId('topo-line-overlay')).not.toBeInTheDocument()
+
+      // 触发图片加载完成
+      fireEvent.load(screen.getByRole('img'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('topo-line-overlay')).toBeInTheDocument()
+      })
+    })
+
+    it('有多条同岩面兄弟线路时应渲染 MultiTopoLineOverlay', async () => {
+      const siblingRoutes: Route[] = [
+        mockRouteWithTopo,
+        { ...mockRouteWithTopo, id: 11, name: '银河', grade: 'V6' },
+      ]
+
+      render(
+        <RouteDetailDrawer
+          {...defaultProps}
+          route={mockRouteWithTopo}
+          siblingRoutes={siblingRoutes}
+        />
+      )
+
+      fireEvent.load(screen.getByRole('img'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('multi-topo-line-overlay')).toBeInTheDocument()
+      })
+      // 单线路 overlay 不应同时存在
+      expect(screen.queryByTestId('topo-line-overlay')).not.toBeInTheDocument()
+    })
+
+    it('无 topoLine 时不应渲染任何叠加层', () => {
+      render(
+        <RouteDetailDrawer
+          {...defaultProps}
+          route={mockRoute}
+        />
+      )
+
+      expect(screen.queryByTestId('topo-line-overlay')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('multi-topo-line-overlay')).not.toBeInTheDocument()
     })
   })
 })

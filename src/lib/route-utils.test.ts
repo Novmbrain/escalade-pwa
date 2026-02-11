@@ -44,4 +44,14 @@ describe('getSiblingRoutes', () => {
     const result = getSiblingRoutes(testRoutes[0], testRoutes)
     expect(result.map((r) => r.id)).toEqual([10])
   })
+
+  it('returns all sibling routes when all match cragId + faceId + topoLine', () => {
+    const testRoutes: Route[] = [
+      makeRoute({ id: 1, name: 'A', grade: 'V1', cragId: 'c1', area: 'left', faceId: 'f1', topoLine }),
+      makeRoute({ id: 2, name: 'B', grade: 'V2', cragId: 'c1', area: 'left', faceId: 'f1', topoLine }),
+      makeRoute({ id: 3, name: 'C', grade: 'V3', cragId: 'c1', area: 'left', faceId: 'f1', topoLine }),
+    ]
+    const result = getSiblingRoutes(testRoutes[0], testRoutes)
+    expect(result.map((r) => r.id)).toEqual([1, 2, 3])
+  })
 })
