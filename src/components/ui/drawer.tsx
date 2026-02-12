@@ -46,6 +46,7 @@ export function Drawer({
   const currentYRef = useRef<number>(0)
   const isDraggingRef = useRef<boolean>(false)
   const drawerHeightRef = useRef<number>(0)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // 控制关闭动画状态
   const [isClosing, setIsClosing] = useState(false)
@@ -114,6 +115,13 @@ export function Drawer({
 
   // 触摸手势处理
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // 仅在内容滚动到顶部时允许下滑关闭手势
+    const scrollContainer = scrollContainerRef.current
+    if (scrollContainer && scrollContainer.scrollTop > 0) {
+      isDraggingRef.current = false
+      return
+    }
+
     startYRef.current = e.touches[0].clientY
     startTimeRef.current = Date.now()
     currentYRef.current = 0
@@ -248,7 +256,7 @@ export function Drawer({
         )}
 
         {/* 内容区 */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </div>
 

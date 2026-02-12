@@ -11,20 +11,11 @@ const twoRoutes: MultiTopoRoute[] = [
   { id: 2, name: '飞燕走壁', grade: 'V5', topoLine },
 ]
 
-const fourRoutes: MultiTopoRoute[] = [
-  { id: 1, name: '猴子捞月', grade: 'V3', topoLine },
-  { id: 2, name: '飞燕走壁', grade: 'V5', topoLine },
-  { id: 3, name: '小石头', grade: 'V2', topoLine },
-  { id: 4, name: '大力士', grade: 'V7', topoLine },
-]
-
 describe('RouteLegendPanel', () => {
   const defaultProps = {
     routes: twoRoutes,
     selectedRouteId: 1,
     onRouteSelect: vi.fn(),
-    showAllOverlay: false,
-    onToggleShowAll: vi.fn(),
   }
 
   describe('渲染', () => {
@@ -38,49 +29,6 @@ describe('RouteLegendPanel', () => {
       render(<RouteLegendPanel {...defaultProps} />)
       expect(screen.getByText('V3')).toBeInTheDocument()
       expect(screen.getByText('V5')).toBeInTheDocument()
-    })
-
-    it('≤3 条线路时不应显示 showAll toggle', () => {
-      render(<RouteLegendPanel {...defaultProps} />)
-      expect(screen.queryByText('showAllRoutes')).not.toBeInTheDocument()
-      expect(screen.queryByText('showCurrentOnly')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('>3 条线路时的 toggle', () => {
-    it('showAllOverlay=false 时应显示 showAllRoutes 按钮', () => {
-      render(
-        <RouteLegendPanel
-          {...defaultProps}
-          routes={fourRoutes}
-          showAllOverlay={false}
-        />
-      )
-      expect(screen.getByText('showAllRoutes')).toBeInTheDocument()
-    })
-
-    it('showAllOverlay=true 时应显示 showCurrentOnly 按钮', () => {
-      render(
-        <RouteLegendPanel
-          {...defaultProps}
-          routes={fourRoutes}
-          showAllOverlay={true}
-        />
-      )
-      expect(screen.getByText('showCurrentOnly')).toBeInTheDocument()
-    })
-
-    it('点击 toggle 按钮应调用 onToggleShowAll', () => {
-      const onToggleShowAll = vi.fn()
-      render(
-        <RouteLegendPanel
-          {...defaultProps}
-          routes={fourRoutes}
-          onToggleShowAll={onToggleShowAll}
-        />
-      )
-      fireEvent.click(screen.getByText('showAllRoutes'))
-      expect(onToggleShowAll).toHaveBeenCalledOnce()
     })
   })
 

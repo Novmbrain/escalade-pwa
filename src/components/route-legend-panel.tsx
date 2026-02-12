@@ -1,11 +1,7 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
 import type { MultiTopoRoute } from '@/components/multi-topo-line-overlay'
 import { getGradeColor } from '@/lib/tokens'
-
-/** 智能默认阈值：超过此数量的线路默认不叠加显示 */
-const SMART_DEFAULT_THRESHOLD = 3
 
 interface RouteLegendPanelProps {
   /** 同岩面所有有效线路 */
@@ -14,22 +10,13 @@ interface RouteLegendPanelProps {
   selectedRouteId: number
   /** 线路切换回调 */
   onRouteSelect: (routeId: number) => void
-  /** 是否显示所有叠加线路（用于 >3 条时的 toggle） */
-  showAllOverlay: boolean
-  /** 切换显示所有叠加线路 */
-  onToggleShowAll: () => void
 }
 
 export function RouteLegendPanel({
   routes,
   selectedRouteId,
   onRouteSelect,
-  showAllOverlay,
-  onToggleShowAll,
 }: RouteLegendPanelProps) {
-  const t = useTranslations('RouteDetail')
-  const showToggle = routes.length > SMART_DEFAULT_THRESHOLD
-
   return (
     <div
       className="mb-3 overflow-hidden"
@@ -94,20 +81,6 @@ export function RouteLegendPanel({
           )
         })}
       </div>
-
-      {/* Toggle: 显示全部 / 仅看当前 (>3 条时) */}
-      {showToggle && (
-        <button
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors duration-200"
-          style={{
-            borderTop: '1px solid var(--theme-outline-variant)',
-            color: 'var(--theme-primary)',
-          }}
-          onClick={onToggleShowAll}
-        >
-          {showAllOverlay ? t('showCurrentOnly') : t('showAllRoutes')}
-        </button>
-      )}
     </div>
   )
 }
