@@ -45,8 +45,10 @@
   "dependencies": {
     "@amap/amap-jsapi-loader": "^1.0.1",
     "@aws-sdk/client-s3": "^3.975.0",
+    "@better-auth/passkey": "^1.4.18",
     "@radix-ui/react-slot": "^1.2.4",
     "@serwist/next": "^9.5.0",
+    "better-auth": "^1.4.18",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -59,9 +61,11 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-zoom-pan-pinch": "^3.7.0",
+    "resend": "^6.9.2",
     "serwist": "^9.5.0",
     "swr": "^2.4.0",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "worker": "^0.4.0"
   },
   "lint-staged": {
     "*.{ts,tsx}": "eslint",

@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { useRouter } from '@/i18n/navigation'
-import { Palette, Heart, Copy, Check, User, Send, Users, Globe, Lock, Mountain } from 'lucide-react'
+import { Palette, Heart, Copy, Check, User, Send, Users, Globe, LogIn, LogOut, Edit3, Fingerprint, Mountain, Trash2 } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { AppTabbar } from '@/components/app-tabbar'
 import { ThemeSwitcher } from '@/components/theme-switcher'
@@ -13,6 +12,9 @@ import { OfflineCacheSection } from '@/components/offline-cache-manager'
 import { Drawer } from '@/components/ui/drawer'
 import { Textarea } from '@/components/ui/textarea'
 import { ImageViewer } from '@/components/ui/image-viewer'
+import { useToast } from '@/components/ui/toast'
+import { useSession, signOut } from '@/lib/auth-client'
+import { usePasskeyManagement } from '@/hooks/use-passkey-management'
 // 访问统计缓存 key
 const VISITS_CACHE_KEY = 'total_visits_cache'
 
@@ -28,7 +30,15 @@ const AUTHOR = {
 
 export default function ProfilePage() {
   const t = useTranslations('Profile')
+  const tAuth = useTranslations('Auth')
   const tIntro = useTranslations('Intro')
+  const { showToast } = useToast()
+
+  // Auth state
+  const { data: session } = useSession()
+  const isLoggedIn = !!session
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
+  const { passkeys, isLoading: passkeysLoading, addPasskey, deletePasskey } = usePasskeyManagement()
 
   // 作者抽屉状态
   const [authorDrawerOpen, setAuthorDrawerOpen] = useState(false)
@@ -51,13 +61,6 @@ export default function ProfilePage() {
 
   // 访问统计状态
   const [totalVisits, setTotalVisits] = useState<number | null>(null)
-
-  // 编辑器入口状态
-  const router = useRouter()
-  const [editorDrawerOpen, setEditorDrawerOpen] = useState(false)
-  const [editorPassword, setEditorPassword] = useState('')
-  const [editorPasswordError, setEditorPasswordError] = useState(false)
-  const passwordInputRef = useRef<HTMLInputElement>(null)
 
   // 获取访问统计
   useEffect(() => {
@@ -135,19 +138,33 @@ export default function ProfilePage() {
     }
   }, [])
 
-  // 编辑器密码验证
-  const handleEditorPasswordSubmit = useCallback(() => {
-    if (editorPassword === '1243') {
-      setEditorDrawerOpen(false)
-      setEditorPassword('')
-      setEditorPasswordError(false)
-      router.push('/editor')
-    } else {
-      setEditorPasswordError(true)
-      setEditorPassword('')
-      passwordInputRef.current?.focus()
+  // Auth actions
+  const handleLogout = useCallback(async () => {
+    await signOut()
+    showToast(tAuth('logout'), 'success')
+  }, [showToast, tAuth])
+
+  const handleAddPasskey = useCallback(async () => {
+    try {
+      const result = await addPasskey()
+      if (result?.error) {
+        showToast(tAuth('passkeyFailed'), 'error')
+      } else {
+        showToast(tAuth('passkeyAdded'), 'success')
+      }
+    } catch {
+      showToast(tAuth('passkeyFailed'), 'error')
     }
-  }, [editorPassword, router])
+  }, [addPasskey, showToast, tAuth])
+
+  const handleDeletePasskey = useCallback(async (id: string) => {
+    try {
+      await deletePasskey(id)
+      showToast(tAuth('passkeyDeleted'), 'success')
+    } catch {
+      showToast(tAuth('passkeyFailed'), 'error')
+    }
+  }, [deletePasskey, showToast, tAuth])
 
   return (
     <>
@@ -283,36 +300,145 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* 编辑器入口 */}
+          {/* 账号区块 */}
           <div className="mb-6">
-            <button
-              onClick={() => {
-                setEditorDrawerOpen(true)
-                setEditorPassword('')
-                setEditorPasswordError(false)
-              }}
-              className="w-full flex items-center gap-4 p-4 transition-all active:scale-[0.98]"
-              style={{
-                backgroundColor: 'var(--theme-surface)',
-                borderRadius: 'var(--theme-radius-xl)',
-                boxShadow: 'var(--theme-shadow-sm)',
-              }}
-            >
+            {isLoggedIn ? (
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))' }}
+                className="p-4"
+                style={{
+                  backgroundColor: 'var(--theme-surface)',
+                  borderRadius: 'var(--theme-radius-xl)',
+                  boxShadow: 'var(--theme-shadow-sm)',
+                }}
               >
-                <Lock className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
+                {/* 登录状态 */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--theme-success) 15%, var(--theme-surface))' }}
+                  >
+                    <User className="w-5 h-5" style={{ color: 'var(--theme-success)' }} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium" style={{ color: 'var(--theme-on-surface)' }}>
+                      {tAuth('loggedInAs')}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
+                      {session.user.email}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Passkey 管理 */}
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Fingerprint className="w-3.5 h-3.5" style={{ color: 'var(--theme-primary)' }} />
+                    <span className="text-xs font-semibold" style={{ color: 'var(--theme-on-surface)' }}>
+                      {tAuth('registeredPasskeys')}
+                    </span>
+                  </div>
+                  {passkeysLoading ? (
+                    <div
+                      className="h-8 rounded skeleton-shimmer"
+                      style={{ backgroundColor: 'var(--theme-surface-variant)' }}
+                    />
+                  ) : passkeys.length === 0 ? (
+                    <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
+                      {tAuth('noPasskeys')}
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {passkeys.map((pk) => (
+                        <div
+                          key={pk.id}
+                          className="flex items-center justify-between p-2 rounded-lg"
+                          style={{ backgroundColor: 'var(--theme-surface-variant)' }}
+                        >
+                          <div>
+                            <p className="text-xs font-medium" style={{ color: 'var(--theme-on-surface)' }}>
+                              {pk.name || 'Passkey'}
+                            </p>
+                            <p className="text-[10px]" style={{ color: 'var(--theme-on-surface-variant)' }}>
+                              {new Date(pk.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleDeletePasskey(pk.id)}
+                            className="p-1.5 rounded-full transition-all active:scale-90"
+                            style={{ color: 'var(--theme-error)' }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleAddPasskey}
+                    className="mt-2 text-xs font-medium"
+                    style={{ color: 'var(--theme-primary)' }}
+                  >
+                    + {tAuth('addDevice')}
+                  </button>
+                </div>
+
+                {/* 编辑器入口 (admin only) */}
+                {isAdmin && (
+                  <Link
+                    href="/editor"
+                    className="w-full flex items-center gap-3 p-3 mb-3 transition-all active:scale-[0.98]"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--theme-primary) 10%, var(--theme-surface))',
+                      borderRadius: 'var(--theme-radius-lg)',
+                    }}
+                  >
+                    <Edit3 className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+                    <span className="text-sm font-medium" style={{ color: 'var(--theme-primary)' }}>
+                      {t('editorEntry')}
+                    </span>
+                  </Link>
+                )}
+
+                {/* 退出登录 */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 p-2.5 text-sm transition-all active:scale-[0.98]"
+                  style={{
+                    color: 'var(--theme-on-surface-variant)',
+                    borderRadius: 'var(--theme-radius-lg)',
+                  }}
+                >
+                  <LogOut className="w-4 h-4" />
+                  {tAuth('logout')}
+                </button>
               </div>
-              <div className="flex-1 text-left">
-                <p className="text-base font-medium" style={{ color: 'var(--theme-on-surface)' }}>
-                  {t('editorEntry')}
-                </p>
-                <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
-                  {t('editorEntryHint')}
-                </p>
-              </div>
-            </button>
+            ) : (
+              /* 未登录状态 */
+              <Link
+                href="/login"
+                className="w-full flex items-center gap-4 p-4 transition-all active:scale-[0.98]"
+                style={{
+                  backgroundColor: 'var(--theme-surface)',
+                  borderRadius: 'var(--theme-radius-xl)',
+                  boxShadow: 'var(--theme-shadow-sm)',
+                }}
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))' }}
+                >
+                  <LogIn className="w-5 h-5" style={{ color: 'var(--theme-primary)' }} />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-base font-medium" style={{ color: 'var(--theme-on-surface)' }}>
+                    {tAuth('loginOrRegister')}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--theme-on-surface-variant)' }}>
+                    {tAuth('firstTimeHint')}
+                  </p>
+                </div>
+              </Link>
+            )}
           </div>
 
           {/* 版本信息 */}
@@ -488,75 +614,6 @@ export default function ProfilePage() {
             <Heart className="w-5 h-5" fill="white" />
             <span className="font-medium">{t('donate')}</span>
           </button>
-        </div>
-      </Drawer>
-
-      {/* 编辑器密码抽屉 */}
-      <Drawer
-        isOpen={editorDrawerOpen}
-        onClose={() => setEditorDrawerOpen(false)}
-        height="auto"
-        showHandle
-      >
-        <div className="px-4 pb-6">
-          <div className="flex flex-col items-center mb-4">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))' }}
-            >
-              <Lock className="w-6 h-6" style={{ color: 'var(--theme-primary)' }} />
-            </div>
-            <h2
-              className="text-lg font-bold"
-              style={{ color: 'var(--theme-on-surface)' }}
-            >
-              {t('editorPasswordTitle')}
-            </h2>
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleEditorPasswordSubmit()
-            }}
-          >
-            {/* eslint-disable-next-line no-restricted-syntax -- type="password" has no IME composition */}
-            <input
-              ref={passwordInputRef}
-              type="password"
-              inputMode="numeric"
-              value={editorPassword}
-              onChange={(e) => {
-                setEditorPassword(e.target.value)
-                setEditorPasswordError(false)
-              }}
-              placeholder={t('editorPasswordPlaceholder')}
-              autoFocus
-              className="w-full p-3 text-center text-lg tracking-widest outline-none mb-3"
-              style={{
-                backgroundColor: 'var(--theme-surface-variant)',
-                color: 'var(--theme-on-surface)',
-                borderRadius: 'var(--theme-radius-lg)',
-                border: editorPasswordError ? '2px solid var(--theme-error)' : '2px solid transparent',
-              }}
-            />
-            {editorPasswordError && (
-              <p className="text-xs text-center mb-3" style={{ color: 'var(--theme-error)' }}>
-                {t('editorPasswordWrong')}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={!editorPassword.trim()}
-              className="w-full p-3 font-medium transition-all active:scale-[0.98] disabled:opacity-40"
-              style={{
-                backgroundColor: 'var(--theme-primary)',
-                color: 'var(--theme-on-primary)',
-                borderRadius: 'var(--theme-radius-lg)',
-              }}
-            >
-              {t('editorPasswordConfirm')}
-            </button>
-          </form>
         </div>
       </Drawer>
 
