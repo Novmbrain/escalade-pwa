@@ -1,38 +1,47 @@
-# Authentication System — Magic Link + Passkey
+# Authentication System — Magic Link + Password + Passkey
 
-> 实施日期: 2026-02-12 | 框架: better-auth | PR: #217
+> 实施日期: 2026-02-12 | 框架: better-auth | PR: #217, #218-#220
 
 ## 概述
 
-BlocTop 使用**无密码认证**方案。用户通过 Magic Link 邮件完成注册/恢复，Passkey (WebAuthn) 用于日常生物识别登录。编辑器通过 server-side session + role 检查保护，替代了之前的客户端硬编码密码。
+BlocTop 使用**三重认证**方案。用户通过 Magic Link 邮件完成**注册和邮箱验证**（唯一注册入口），验证后可选择设置密码和/或 Passkey 作为日常登录方式。编辑器通过 server-side session + role 检查保护。
+
+**三种登录方式**：
+- **Magic Link**: 邮箱链接登录，同时用于注册和找回密码
+- **密码登录**: 邮箱+密码，仅在 Magic Link 验证后可设置（可选）
+- **Passkey**: 生物识别登录（指纹/面容），最便捷的日常登录方式
+
+**核心原则**：注册只走 Magic Link → 确保邮箱真实性 → 密码/Passkey 作为后续便捷登录方式
 
 ## 架构总览
 
 ```
-┌─────────────┐     Magic Link      ┌──────────┐     SMTP      ┌────────┐
-│  Login Page  │ ──────────────────→ │ better-  │ ───────────→ │ Resend │
-│  (Client)    │ ←── session cookie  │ auth API │              └────────┘
-│              │                     │          │
-│  Passkey btn │ ── WebAuthn ──────→ │ /api/    │     MongoDB
-│              │ ←── session cookie  │ auth/    │ ──────────→ user, session,
-└─────────────┘                     │ [..all]  │              account, passkey,
-                                    └──────────┘              verification
+┌─────────────────┐  Magic Link    ┌──────────┐     SMTP      ┌────────┐
+│  Login Page      │ ────────────→ │ better-  │ ───────────→ │ Resend │
+│  (Tab: 邮箱登录) │ ←── cookie    │ auth API │              └────────┘
+│                  │               │          │
+│  (Tab: 密码登录) │ ── email+pw → │ /api/    │     MongoDB
+│                  │ ←── cookie    │ auth/    │ ──────────→ user, session,
+│  Passkey btn     │ ── WebAuthn → │ [..all]  │              account, passkey,
+│                  │ ←── cookie    └──────────┘              verification
+└─────────────────┘
 ```
 
 ## 核心文件
 
 | 文件 | 层级 | 职责 |
 |------|------|------|
-| `src/lib/auth.ts` | Server | better-auth 实例 (lazy singleton)，含 Magic Link + Passkey 插件 |
+| `src/lib/auth.ts` | Server | better-auth 实例 (lazy singleton)，含 Magic Link + Password + Passkey |
 | `src/lib/auth-client.ts` | Client | `createAuthClient` + React hooks (`useSession`, `signIn`, `signOut`) |
 | `src/lib/email-templates.ts` | Server | Magic Link 邮件 HTML 模板 (纯内联样式) |
 | `src/app/api/auth/[...all]/route.ts` | API | Catch-all 路由，代理所有 `/api/auth/*` 请求到 better-auth |
-| `src/app/[locale]/login/page.tsx` | Page | 登录页 — 邮箱输入 + Magic Link 发送 + Passkey 按钮 |
+| `src/app/[locale]/login/page.tsx` | Page | 登录页 — Tab 切换（邮箱登录 / 密码登录）+ Passkey 按钮 |
 | `src/app/[locale]/auth/verify/page.tsx` | Page | Magic Link 验证中间页 (5s 超时 fallback) |
-| `src/app/[locale]/auth/passkey-setup/page.tsx` | Page | Passkey 注册引导页 (Magic Link 登录后) |
+| `src/app/[locale]/auth/security-setup/page.tsx` | Page | **安全设置引导页** — 合并密码设置 + Passkey 设置（Magic Link 登录后） |
+| `src/app/api/auth/set-password/route.ts` | API | Server Action 包装 `auth.api.setPassword()`（仅已登录用户） |
 | `src/app/[locale]/editor/layout.tsx` | Layout | **Server-side auth guard** — 检查 session + admin role |
 | `src/hooks/use-passkey-management.ts` | Hook | Passkey CRUD (列表/添加/删除) |
-| `src/app/[locale]/profile/page.tsx` | Page | 账号状态展示 + Passkey 管理 + 编辑器入口 |
+| `src/app/[locale]/profile/page.tsx` | Page | 账号状态展示 + 密码管理 + Passkey 管理 + 编辑器入口 |
 
 ## 依赖
 
@@ -52,21 +61,44 @@ BlocTop 使用**无密码认证**方案。用户通过 Magic Link 邮件完成�
 | `RESEND_API_KEY` | ✅ | Resend API Key (`re_xxxx`) |
 | `NEXT_PUBLIC_APP_URL` | ✅ | 应用 URL (生产: `https://bouldering.top`，开发: `http://localhost:3000`) |
 
-## Lazy Singleton 初始化模式
+## 服务端配置要点
 
-`auth.ts` **不使用 top-level await**，改为 lazy singleton 模式：
+### Lazy Singleton 初始化
+
+`auth.ts` **不使用 top-level await**，改为 lazy singleton 模式（避免 Vercel 构建崩溃）：
 
 ```typescript
-let _auth: ReturnType<typeof betterAuth> | null = null
-let _promise: Promise<ReturnType<typeof betterAuth>> | null = null
-
 export function getAuth(): Promise<ReturnType<typeof betterAuth>> {
   if (_auth) return Promise.resolve(_auth)
   if (!_promise) {
     _promise = (async () => {
-      const client = await clientPromise
-      const db = await getDatabase()
-      const instance = betterAuth({ database: mongodbAdapter(db, { client }), ... })
+      const instance = betterAuth({
+        database: mongodbAdapter(db, { client }),
+
+        // 邮箱+密码（内置核心功能）
+        emailAndPassword: {
+          enabled: true,
+          minPasswordLength: 8,
+        },
+
+        // 账号关联 — 同一邮箱的 Magic Link / Password / Passkey 共享用户记录
+        account: {
+          accountLinking: {
+            enabled: true,
+          },
+        },
+
+        trustedOrigins: [
+          'https://bouldering.top',
+          'https://www.bouldering.top',
+        ],
+
+        plugins: [
+          magicLink({ ... }),
+          passkey({ ... }),
+        ],
+        // ... session, rateLimit
+      })
       _auth = instance
       return instance
     })()
@@ -75,7 +107,15 @@ export function getAuth(): Promise<ReturnType<typeof betterAuth>> {
 }
 ```
 
-**为什么不用 top-level await**：Vercel 构建时 bundler 解析模块会执行 top-level await，如果 `BETTER_AUTH_SECRET` 未配置（`NODE_ENV=production`），better-auth 直接抛异常导致构建失败。Lazy singleton 让 MongoDB 连接和 auth 初始化延迟到第一个实际请求到来时。
+**emailAndPassword 说明**：
+- 内置核心功能（非插件），`enabled: true` 即启用
+- 客户端不调用 `signUp.email()` — 注册只走 Magic Link，确保邮箱已验证
+- `signIn.email()` 仅对已设密码的用户有效
+- `auth.api.setPassword()` 是 server-only API，用于 Magic Link 用户后续设密码
+
+**accountLinking 说明**：
+- 同一邮箱通过不同方式登录时，`account` collection 会创建多条记录（`credential`、`magic_link`、`passkey`），但都指向同一个 `user` 记录
+- 确保用户不会因为换登录方式而产生重复账号
 
 消费方式：
 ```typescript
@@ -96,9 +136,16 @@ better-auth 使用 **单数** collection 命名（不是复数），自动在首
 |------------|------|
 | `user` | 用户记录 (email, role, emailVerified) |
 | `session` | 活跃 session |
-| `account` | 认证方式关联 |
+| `account` | 认证方式关联（一个用户可有多条：`credential` / `magic_link` / `passkey`） |
 | `verification` | Magic Link token 存储 |
 | `passkey` | WebAuthn credential |
+
+**account collection 的 providerId 类型**：
+- `credential` — 邮箱+密码登录（用户设置密码后创建）
+- `magic_link` — Magic Link 登录
+- `passkey` — Passkey 登录
+
+> 同一用户可同时拥有三种 account 类型，通过 `accountLinking` 配置确保合并到同一 user。
 
 设置管理员角色：
 ```javascript
@@ -108,24 +155,75 @@ db.user.updateOne(
 )
 ```
 
-## 登录流程
+## 登录页 UI
 
-### Magic Link 流程
+登录页使用 **Tab 切换** 呈现两种主要登录方式，Passkey 按钮始终在底部：
 
 ```
-1. 用户输入邮箱 → 点击"发送登录链接"
-2. Client: authClient.signIn.magicLink({ email, callbackURL: '/' })
+┌─────────────────────────────────┐
+│  ← 返回首页                      │
+│                                  │
+│  登录寻岩记                       │
+│  首次使用？输入邮箱即可注册        │
+│                                  │
+│  ┌──────────┬──────────┐         │
+│  │ 邮箱登录  │ 密码登录  │  ← SegmentedControl
+│  └──────────┴──────────┘         │
+│                                  │
+│  [Tab 1: 邮箱登录]               │
+│  ┌─────────────────────┐        │
+│  │  邮箱地址             │        │
+│  └─────────────────────┘        │
+│  [ 📧 发送登录链接 ]             │
+│                                  │
+│  [Tab 2: 密码登录]               │
+│  ┌─────────────────────┐        │
+│  │  邮箱地址             │        │
+│  └─────────────────────┘        │
+│  ┌─────────────────────┐        │
+│  │  密码                 │        │
+│  └─────────────────────┘        │
+│  [ 🔑 登录 ]                    │
+│           忘记密码？ → 切到邮箱Tab │
+│                                  │
+│  ────────── 或 ──────────        │
+│  [ 🔐 Passkey 登录 ]            │
+└─────────────────────────────────┘
+```
+
+## 登录流程
+
+### Magic Link 流程（注册 + 登录 + 找回密码）
+
+```
+1. 用户切换到「邮箱登录」Tab → 输入邮箱 → 点击"发送登录链接"
+2. Client: authClient.signIn.magicLink({ email, callbackURL: '/auth/security-setup' })
 3. Server: better-auth 生成 token → 存入 verification collection
 4. Server: sendMagicLink() → Resend 发送 HTML 邮件
 5. 用户点击邮件链接 → better-auth 验证 token
 6. Server: 创建 session → 设置 httpOnly cookie
-7. Client: 重定向到 callbackURL ('/')
+7. Client: 重定向到 /auth/security-setup（安全设置引导页）
 ```
+
+> **注册**: 新邮箱自动创建用户。**找回密码**: 登录后在 Profile 页重设。
+> callbackURL 使用 `/auth/security-setup` — 引导页检测用户已有设置则自动跳转首页。
+
+### 密码登录流程
+
+```
+1. 用户切换到「密码登录」Tab → 输入邮箱和密码 → 点击"登录"
+2. Client: authClient.signIn.email({ email, password })
+3. Server: 验证 credential account → 创建 session
+4. Client: 重定向到首页
+```
+
+> 仅对已设置密码的用户有效。未设密码的用户需使用 Magic Link 或 Passkey。
 
 ### Passkey 流程
 
 ```
-1. 已登录用户 → Profile 页 → "添加设备"
+注册 Passkey:
+1. 已登录用户 → Profile 页或安全设置引导页 → "添加设备"
 2. Client: authClient.passkey.addPasskey()
 3. Browser: 系统生物识别弹窗 (指纹/面容)
 4. Server: 存储 credential 到 passkey collection
@@ -136,6 +234,65 @@ db.user.updateOne(
 3. Browser: 系统生物识别验证
 4. Server: 验证 assertion → 创建 session
 ```
+
+### 忘记密码流程
+
+```
+1. 密码登录 Tab → 点击"忘记密码？"
+2. 自动切换到「邮箱登录」Tab，提示"通过邮件登录后可重设密码"
+3. 用户通过 Magic Link 登录
+4. 在 Profile 页 → 安全设置 → 重设密码
+```
+
+> 不需要专用的"重置密码"邮件模板，复用 Magic Link 即可。
+
+## 安全设置引导页
+
+Magic Link 验证成功后跳转到 `/auth/security-setup`，合并展示两个可选设置：
+
+```
+┌─────────────────────────────────┐
+│                                  │
+│  ✅ 登录成功！                    │
+│                                  │
+│  设置常用登录方式                 │
+│                                  │
+│  ┌─────────────────────────┐    │
+│  │ 🔑 设置密码              │    │
+│  │  下次可直接输入密码登录    │    │
+│  │                          │    │
+│  │  新密码: [__________]    │    │
+│  │  确认:   [__________]    │    │
+│  │  [ 设置密码 ]            │    │
+│  └─────────────────────────┘    │
+│                                  │
+│  ┌─────────────────────────┐    │
+│  │ 🔐 设置 Passkey          │    │
+│  │  指纹/面容一键登录        │    │
+│  │  [ 添加 Passkey ]        │    │
+│  └─────────────────────────┘    │
+│                                  │
+│  [ 稍后设置，先去逛逛 → ]        │
+└─────────────────────────────────┘
+```
+
+**设置密码的 API 调用**：
+```typescript
+// 客户端调用自定义 API Route
+const res = await fetch('/api/auth/set-password', {
+  method: 'POST',
+  body: JSON.stringify({ newPassword }),
+})
+
+// src/app/api/auth/set-password/route.ts (Server)
+const auth = await getAuth()
+await auth.api.setPassword({
+  body: { newPassword },
+  headers: await headers(),
+})
+```
+
+> `setPassword` 是 server-only API — 为已通过 Magic Link 验证但尚未设置密码的用户创建 credential account。
 
 ## 编辑器权限保护
 
@@ -165,16 +322,44 @@ if (!session || session.user.role !== 'admin') {
 
 better-auth 内置 rate limit：每 IP 每 60 秒最多 10 次请求，覆盖所有 `/api/auth/*` 端点。
 
+## Profile 页密码管理
+
+Profile 页「安全设置」区块根据用户状态显示不同操作：
+
+| 状态 | 显示内容 |
+|------|---------|
+| 未设密码 | 「设置密码」按钮 → 调用 `/api/auth/set-password` |
+| 已设密码 | 「修改密码」按钮 → 调用 `authClient.changePassword({ currentPassword, newPassword })` |
+
+> `changePassword` 是客户端方法，需输入旧密码验证。`setPassword` 是 server-only，只需新密码。
+
 ## i18n
 
-翻译 key 在 `messages/{locale}.json` 的 `Auth` 命名空间下，共 31 个 key：
+翻译 key 在 `messages/{locale}.json` 的 `Auth` 命名空间下：
 
 ```typescript
-// Client Component
 const t = useTranslations('Auth')
-t('loginTitle')     // "登录寻岩记"
-t('sendMagicLink')  // "发送登录链接"
-t('passkeyLogin')   // "Passkey 登录"
+// 登录页 Tab
+t('tabMagicLink')       // "邮箱登录"
+t('tabPassword')        // "密码登录"
+t('sendMagicLink')      // "发送登录链接"
+t('passwordPlaceholder') // "输入密码"
+t('passwordLogin')      // "登录"
+t('forgotPassword')     // "忘记密码？"
+t('passkeyLogin')       // "Passkey 登录"
+// 安全设置引导页
+t('securitySetupTitle') // "设置常用登录方式"
+t('setPassword')        // "设置密码"
+t('setPasswordHint')    // "下次可直接输入密码登录"
+t('confirmPassword')    // "确认密码"
+t('passwordMismatch')   // "两次密码不一致"
+t('passwordTooShort')   // "密码至少 8 位"
+t('passwordSetSuccess') // "密码设置成功"
+// Profile 密码管理
+t('changePassword')     // "修改密码"
+t('currentPassword')    // "当前密码"
+t('newPassword')        // "新密码"
+t('passwordChanged')    // "密码已修改"
 ```
 
 ## Email 发送
@@ -185,5 +370,11 @@ t('passkeyLogin')   // "Passkey 登录"
 ## 待办事项
 
 - [ ] 完成 `bouldering.top` 在 Resend 的 DNS 域名验证 (SPF/DKIM/MX)
+- [ ] 实现密码登录 Tab（`signIn.email` 客户端调用）
+- [ ] 实现安全设置引导页（合并密码 + Passkey 设置）
+- [ ] 创建 `/api/auth/set-password` API Route
+- [ ] Profile 页添加密码管理（设置/修改密码）
+- [ ] `auth.ts` 添加 `emailAndPassword` + `accountLinking` 配置
 - [ ] Login 页 Passkey 按钮接入真实 `signIn.passkey()` (当前为占位)
+- [ ] 新增 i18n 翻译键（密码相关，约 15 个 key）
 - [ ] 邮件模板多语言支持 (根据用户 locale 切换)

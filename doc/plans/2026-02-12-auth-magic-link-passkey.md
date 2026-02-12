@@ -762,3 +762,134 @@ db.users.updateOne(
 | 现有页面加 auth 检查 | 渐进式增强，公开页面保持公开 |
 | 修改现有 DB schema | 新功能用新 collection |
 | 中间件 auth 拦截 | Server Component 层检查更灵活 |
+
+---
+
+## 十六、实施纪要
+
+> 以下内容记录实际实施过程中的偏差、问题修复和关键决策。
+
+### 16.1 Phase 完成状态
+
+| Phase | 状态 | 说明 |
+|-------|------|------|
+| Phase 1: Magic Link MVP | ✅ 完成 | PR #217 + hotfix PRs #218-#220 |
+| Phase 2: Passkey 集成 | ⚠️ 部分完成 | 服务端插件已配置，登录页按钮为占位 |
+| Phase 3: Profile + 编辑器 | ✅ 完成 | Profile 页 Passkey 管理 + 编辑器 Server-side guard |
+| Phase 4: i18n + 打磨 | ✅ 完成 | 三语 31 个翻译键，Toast 错误提示 |
+
+### 16.2 与原始设计的关键偏差
+
+#### ① Lazy Singleton 模式（非 top-level await）
+
+**原始设计** (4.1):
+```typescript
+export const auth = betterAuth({
+  database: mongodbAdapter(await getDatabase()),
+  ...
+})
+```
+
+**实际实现**:
+```typescript
+let _auth: ReturnType<typeof betterAuth> | null = null
+let _promise: Promise<ReturnType<typeof betterAuth>> | null = null
+
+export function getAuth(): Promise<ReturnType<typeof betterAuth>> {
+  if (_auth) return Promise.resolve(_auth)
+  if (!_promise) {
+    _promise = (async () => {
+      const db = await getDatabase()
+      const instance = betterAuth({ database: mongodbAdapter(db, { client }), ... })
+      _auth = instance
+      return instance
+    })()
+  }
+  return _promise
+}
+```
+
+**偏差原因**: Vercel 构建时 bundler 会执行 top-level await，而构建环境缺少 `BETTER_AUTH_SECRET` 导致 better-auth 直接抛异常。Lazy singleton 将初始化延迟到第一个运行时请求。
+
+**影响范围**: 所有消费 auth 的代码从 `import { auth }` 改为 `const auth = await getAuth()`。
+
+#### ② 移除 baseURL 配置
+
+**原始设计** (4.1 + 4.2):
+```typescript
+// 服务端
+baseURL: process.env.NEXT_PUBLIC_APP_URL
+// 客户端
+baseURL: process.env.NEXT_PUBLIC_APP_URL
+```
+
+**实际实现**: 两端均不设 `baseURL`。
+
+**偏差原因**:
+- **客户端**: `NEXT_PUBLIC_*` 变量在 build 时内联。如果 build 时设为 `https://bouldering.top`，但用户通过 `https://www.bouldering.top` 访问，客户端会向非同源地址发请求 → CORS 阻断。不设 baseURL 时 better-auth 自动使用相对路径。
+- **服务端**: better-auth 用 `baseURL` 做 origin 校验。hardcode 为 `https://bouldering.top` 时，来自 `www.bouldering.top` 的请求被拒绝（"Invalid origin"）。不设 baseURL 时 better-auth 从请求的 Host header 自动推断。
+
+#### ③ 新增 trustedOrigins 配置
+
+**原始设计**: 未涉及。
+
+**实际实现**:
+```typescript
+trustedOrigins: [
+  'https://bouldering.top',
+  'https://www.bouldering.top',
+]
+```
+
+**偏差原因**: 用户可能通过 `bouldering.top` 或 `www.bouldering.top` 两个域名访问，better-auth 需要显式信任这两个 origin。
+
+#### ④ Passkey origin 固定为 www 子域名
+
+**原始设计** (4.1):
+```typescript
+origin: process.env.NEXT_PUBLIC_APP_URL!
+```
+
+**实际实现**:
+```typescript
+origin: process.env.NODE_ENV === 'production'
+  ? 'https://www.bouldering.top'
+  : 'http://localhost:3000'
+```
+
+**偏差原因**: WebAuthn origin 必须与用户浏览器的实际 origin 精确匹配。用户统一通过 `www.bouldering.top` 访问（Vercel 的 DNS 配置），所以 hardcode 为 www 子域名更可靠。
+
+#### ⑤ 邮件发送人改为环境变量驱动
+
+**原始设计** (4.1):
+```typescript
+from: "寻岩记 <noreply@bouldering.top>"
+```
+
+**实际实现**:
+```typescript
+const from = process.env.RESEND_FROM_EMAIL
+  ? `寻岩记 <${process.env.RESEND_FROM_EMAIL}>`
+  : '寻岩记 <onboarding@resend.dev>'
+```
+
+**偏差原因**: 域名 `bouldering.top` 在 Resend 尚未完成 DNS 验证（SPF/DKIM），无法作为发件人。环境变量驱动允许在验证完成前使用 Resend 测试域名。
+
+### 16.3 生产环境调试时间线
+
+| 时间 | 问题 | 修复 | PR |
+|------|------|------|-----|
+| 14:10 | Vercel build 失败 — top-level await | 重构为 lazy singleton | #217 (修复 commit) |
+| 14:31 | Magic Link 发送失败 — 客户端无 error log | 添加 debug logging + env-driven sender | #218 |
+| 14:49 | 请求未到达服务端 — baseURL CORS | 移除客户端 baseURL | #219 |
+| 14:55 | "Invalid origin: www.bouldering.top" | 移除服务端 baseURL + trustedOrigins | #220 |
+
+### 16.4 未完成 / 待办
+
+| 任务 | 优先级 | 说明 |
+|------|--------|------|
+| Resend 域名验证 | 🔴 高 | 完成 SPF/DKIM/MX DNS 记录，启用 `noreply@bouldering.top` 发件 |
+| Login 页 Passkey 真实接入 | 🟡 中 | 当前 Passkey 按钮为占位 toast，需调用 `signIn.passkey()` |
+| 邮件模板多语言 | 🟢 低 | 根据用户 locale 切换邮件语言 |
+| 环境变量 `RESEND_FROM_EMAIL` | 🔴 高 | 域名验证完成后在 Vercel 设置 |
+| 确认生产 Magic Link 可用 | 🔴 高 | PR #220 已合并，等待用户验证 |

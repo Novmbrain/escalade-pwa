@@ -2,22 +2,32 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import { Mail, ArrowLeft, Fingerprint } from 'lucide-react'
+import { Mail, ArrowLeft, Fingerprint, KeyRound } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { useToast } from '@/components/ui/toast'
 import { Input } from '@/components/ui/input'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { authClient } from '@/lib/auth-client'
 
 const RESEND_COOLDOWN = 60 // seconds
+
+type LoginTab = 'magic-link' | 'password'
 
 export default function LoginPage() {
   const t = useTranslations('Auth')
   const { showToast } = useToast()
 
+  const [activeTab, setActiveTab] = useState<LoginTab>('magic-link')
   const [email, setEmail] = useState('')
+
+  // Magic Link state
   const [isSending, setIsSending] = useState(false)
   const [isSent, setIsSent] = useState(false)
   const [countdown, setCountdown] = useState(0)
+
+  // Password state
+  const [password, setPassword] = useState('')
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   // Resend countdown timer
   useEffect(() => {
@@ -33,7 +43,7 @@ export default function LoginPage() {
     try {
       const { error } = await authClient.signIn.magicLink({
         email: email.trim(),
-        callbackURL: '/',
+        callbackURL: '/auth/security-setup',
       })
       if (error) {
         console.error('[Login] Magic Link error:', error)
@@ -54,6 +64,52 @@ export default function LoginPage() {
     setIsSent(false)
     handleSendMagicLink()
   }, [handleSendMagicLink])
+
+  const handlePasswordLogin = useCallback(async () => {
+    if (!email.trim() || !password || isLoggingIn) return
+
+    setIsLoggingIn(true)
+    try {
+      const { error } = await authClient.signIn.email({
+        email: email.trim(),
+        password,
+      })
+      if (error) {
+        console.error('[Login] Password error:', error)
+        showToast(t('passwordLoginFailed'), 'error')
+      } else {
+        // Redirect handled by better-auth
+        window.location.href = '/'
+      }
+    } catch (err) {
+      console.error('[Login] Password exception:', err)
+      showToast(t('passwordLoginFailed'), 'error')
+    } finally {
+      setIsLoggingIn(false)
+    }
+  }, [email, password, isLoggingIn, showToast, t])
+
+  const handleForgotPassword = useCallback(() => {
+    setActiveTab('magic-link')
+    showToast(t('forgotPasswordHint'), 'info')
+  }, [showToast, t])
+
+  const handlePasskeyLogin = useCallback(async () => {
+    try {
+      const { error } = await authClient.signIn.passkey()
+      if (error) {
+        console.error('[Login] Passkey error:', error)
+        showToast(t('passkeyFailed'), 'error')
+      }
+    } catch {
+      showToast(t('passkeyFailed'), 'error')
+    }
+  }, [showToast, t])
+
+  const tabOptions = [
+    { value: 'magic-link' as const, label: t('tabMagicLink'), icon: <Mail className="w-4 h-4" /> },
+    { value: 'password' as const, label: t('tabPassword'), icon: <KeyRound className="w-4 h-4" /> },
+  ]
 
   return (
     <div
@@ -83,15 +139,26 @@ export default function LoginPage() {
             {t('loginTitle')}
           </h1>
           <p
-            className="text-sm mb-8"
+            className="text-sm mb-6"
             style={{ color: 'var(--theme-on-surface-variant)' }}
           >
             {t('firstTimeHint')}
           </p>
 
           {!isSent ? (
-            /* Email input + send button */
             <div>
+              {/* Tab Switcher */}
+              <div className="mb-6">
+                <SegmentedControl
+                  options={tabOptions}
+                  value={activeTab}
+                  onChange={setActiveTab}
+                  ariaLabel="Login method"
+                  size="sm"
+                />
+              </div>
+
+              {/* Shared email input */}
               <div className="mb-4">
                 <Input
                   value={email}
@@ -104,19 +171,60 @@ export default function LoginPage() {
                 />
               </div>
 
-              <button
-                onClick={handleSendMagicLink}
-                disabled={!email.trim() || isSending}
-                className="w-full flex items-center justify-center gap-2 p-3.5 font-medium transition-all active:scale-[0.98] disabled:opacity-40"
-                style={{
-                  backgroundColor: 'var(--theme-primary)',
-                  color: 'var(--theme-on-primary)',
-                  borderRadius: 'var(--theme-radius-lg)',
-                }}
-              >
-                <Mail className="w-5 h-5" />
-                {isSending ? t('sending') : t('sendMagicLink')}
-              </button>
+              {activeTab === 'magic-link' ? (
+                /* Magic Link Tab */
+                <button
+                  onClick={handleSendMagicLink}
+                  disabled={!email.trim() || isSending}
+                  className="w-full flex items-center justify-center gap-2 p-3.5 font-medium transition-all active:scale-[0.98] disabled:opacity-40"
+                  style={{
+                    backgroundColor: 'var(--theme-primary)',
+                    color: 'var(--theme-on-primary)',
+                    borderRadius: 'var(--theme-radius-lg)',
+                  }}
+                >
+                  <Mail className="w-5 h-5" />
+                  {isSending ? t('sending') : t('sendMagicLink')}
+                </button>
+              ) : (
+                /* Password Tab */
+                <div>
+                  <div className="mb-4">
+                    <Input
+                      value={password}
+                      onChange={setPassword}
+                      placeholder={t('passwordPlaceholder')}
+                      variant="form"
+                      type="password"
+                      autoComplete="current-password"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handlePasswordLogin}
+                    disabled={!email.trim() || !password || isLoggingIn}
+                    className="w-full flex items-center justify-center gap-2 p-3.5 font-medium transition-all active:scale-[0.98] disabled:opacity-40"
+                    style={{
+                      backgroundColor: 'var(--theme-primary)',
+                      color: 'var(--theme-on-primary)',
+                      borderRadius: 'var(--theme-radius-lg)',
+                    }}
+                  >
+                    <KeyRound className="w-5 h-5" />
+                    {isLoggingIn ? t('sending') : t('passwordLogin')}
+                  </button>
+
+                  <div className="mt-3 text-center">
+                    <button
+                      onClick={handleForgotPassword}
+                      className="text-xs"
+                      style={{ color: 'var(--theme-on-surface-variant)' }}
+                    >
+                      {t('forgotPassword')}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Divider */}
               <div className="flex items-center gap-3 my-6">
@@ -127,16 +235,9 @@ export default function LoginPage() {
                 <div className="flex-1 h-px" style={{ backgroundColor: 'var(--theme-outline-variant)' }} />
               </div>
 
-              {/* Passkey button (Phase 2 — currently hidden if no Passkey support) */}
+              {/* Passkey button */}
               <button
-                onClick={async () => {
-                  try {
-                    // Phase 2: will call signIn.passkey()
-                    showToast(t('passkeyNotSetup'), 'info')
-                  } catch {
-                    showToast(t('passkeyFailed'), 'error')
-                  }
-                }}
+                onClick={handlePasskeyLogin}
                 className="w-full flex items-center justify-center gap-2 p-3.5 font-medium transition-all active:scale-[0.98]"
                 style={{
                   backgroundColor: 'var(--theme-surface-variant)',
