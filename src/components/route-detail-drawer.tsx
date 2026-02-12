@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
-import { MapPin, User, Wrench, Video, ImageIcon, ZoomIn } from 'lucide-react'
+import { MapPin, User, Wrench, Video, ImageIcon, ZoomIn, X, Eye, EyeOff } from 'lucide-react'
 import { Drawer } from '@/components/ui/drawer'
 import { ImageViewer } from '@/components/ui/image-viewer'
 
@@ -45,6 +45,7 @@ export function RouteDetailDrawer({
   onRouteChange,
 }: RouteDetailDrawerProps) {
   const t = useTranslations('RouteDetail')
+  const tCommon = useTranslations('Common')
   const tBeta = useTranslations('Beta')
   const tIntro = useTranslations('Intro')
   const [imageViewerOpen, setImageViewerOpen] = useState(false)
@@ -170,14 +171,14 @@ export function RouteDetailDrawer({
 
   return (
     <>
-      <Drawer isOpen={isOpen} onClose={onClose} height="three-quarter">
+      <Drawer isOpen={isOpen} onClose={onClose} height="full" showHandle>
         <div className="px-4 pb-4">
           {/* TOPO 图片区域 */}
           <div
             className="relative w-full mb-4 overflow-hidden"
             style={{
-              height: '40vh',
-              maxHeight: '320px',
+              height: '50vh',
+              maxHeight: '400px',
               borderRadius: 'var(--theme-radius-xl)',
               backgroundColor: 'var(--theme-surface-variant)',
             }}
@@ -239,6 +240,48 @@ export function RouteDetailDrawer({
                   )
                 )}
 
+                {/* 浮动关闭按钮（图片右上角） */}
+                {!imageLoading && (
+                  <div
+                    className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center bg-black/50 backdrop-blur-sm transition-transform active:scale-95"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onClose()
+                    }}
+                    role="button"
+                    aria-label={tCommon('close')}
+                  >
+                    <X className="w-4.5 h-4.5 text-white" />
+                  </div>
+                )}
+
+                {/* "显示全部/仅看当前" 浮动按钮（图片左下角，仅 >3 条线路时） */}
+                {!imageLoading && hasMultiLines && !shouldShowAllByDefault && (
+                  <div
+                    className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1.5 backdrop-blur-sm transition-all duration-200 active:scale-95"
+                    style={{
+                      borderRadius: 'var(--theme-radius-md)',
+                      backgroundColor: showAllOverlay
+                        ? 'color-mix(in srgb, var(--theme-primary) 60%, rgba(0,0,0,0.3))'
+                        : 'rgba(0,0,0,0.5)',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowAllOverlay(prev => !prev)
+                    }}
+                    role="button"
+                  >
+                    {showAllOverlay ? (
+                      <EyeOff className="w-3.5 h-3.5 text-white" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5 text-white" />
+                    )}
+                    <span className="text-white text-xs font-medium">
+                      {showAllOverlay ? t('showCurrentOnly') : t('showAllRoutes')}
+                    </span>
+                  </div>
+                )}
+
                 {/* 放大提示（图片加载完成后显示） */}
                 {!imageLoading && (
                   <div
@@ -259,8 +302,6 @@ export function RouteDetailDrawer({
               routes={validSiblingRoutes}
               selectedRouteId={route.id}
               onRouteSelect={handleRouteSelect}
-              showAllOverlay={showAllOverlay}
-              onToggleShowAll={() => setShowAllOverlay(prev => !prev)}
             />
           )}
 
