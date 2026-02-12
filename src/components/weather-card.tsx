@@ -103,7 +103,7 @@ export function WeatherCard({ adcode, coordinates, delay = 0 }: WeatherCardProps
                   className="text-sm"
                   style={{ color: 'var(--theme-on-surface-variant)' }}
                 >
-                  {live.weather}
+                  {t.has(`weatherDesc.${live.weather}`) ? t(`weatherDesc.${live.weather}`) : live.weather}
                 </span>
               </div>
             </div>
@@ -123,7 +123,7 @@ export function WeatherCard({ adcode, coordinates, delay = 0 }: WeatherCardProps
               style={{ color: 'var(--theme-on-surface-variant)' }}
             >
               <Wind className="w-3 h-3" />
-              <span>{t('windValue', { direction: live.windDirection, power: live.windPower })}</span>
+              <span>{t('windValue', { direction: t.has(`windDir.${live.windDirection}`) ? t(`windDir.${live.windDirection}`) : live.windDirection, power: live.windPower })}</span>
             </div>
           </div>
         </div>

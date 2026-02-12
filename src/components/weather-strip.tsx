@@ -86,7 +86,7 @@ export function WeatherStrip({ adcode, lng, lat }: WeatherStripProps) {
             className="text-sm"
             style={{ color: 'var(--theme-on-surface-variant)' }}
           >
-            · {live.weather}
+            · {t.has(`weatherDesc.${live.weather}`) ? t(`weatherDesc.${live.weather}`) : live.weather}
           </span>
         </div>
       </div>

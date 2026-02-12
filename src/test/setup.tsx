@@ -83,17 +83,20 @@ Object.defineProperty(window, 'matchMedia', {
 
 // Mock next-intl (国际化)
 // 使用稳定的函数引用，避免因每次渲染返回新函数导致的无限循环
-const stableTranslationFn = (key: string, params?: Record<string, unknown>) => {
-  if (params) {
-    // 简单的参数替换
-    let result = key
-    Object.entries(params).forEach(([k, v]) => {
-      result = result.replace(`{${k}}`, String(v))
-    })
-    return result
-  }
-  return key
-}
+const stableTranslationFn = Object.assign(
+  (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      // 简单的参数替换
+      let result = key
+      Object.entries(params).forEach(([k, v]) => {
+        result = result.replace(`{${k}}`, String(v))
+      })
+      return result
+    }
+    return key
+  },
+  { has: () => false }
+)
 
 vi.mock('next-intl', () => ({
   useTranslations: () => stableTranslationFn,
