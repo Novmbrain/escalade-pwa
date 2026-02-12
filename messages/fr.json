@@ -125,7 +125,36 @@
     "wednesday": "Mer",
     "thursday": "Jeu",
     "friday": "Ven",
-    "saturday": "Sam"
+    "saturday": "Sam",
+    "weatherDesc": {
+      "晴": "Ensoleillé",
+      "少云": "Peu nuageux",
+      "晴间多云": "Partiellement nuageux",
+      "多云": "Nuageux",
+      "阴": "Couvert",
+      "阵雨": "Averses",
+      "雷阵雨": "Orage",
+      "小雨": "Pluie légère",
+      "中雨": "Pluie modérée",
+      "大雨": "Forte pluie",
+      "暴雨": "Tempête de pluie",
+      "雨夹雪": "Pluie verglaçante",
+      "小雪": "Neige légère",
+      "中雪": "Neige modérée",
+      "大雪": "Forte neige",
+      "雾": "Brouillard",
+      "霾": "Brumeux"
+    },
+    "windDir": {
+      "北": "N",
+      "东北": "NE",
+      "东": "E",
+      "东南": "SE",
+      "南": "S",
+      "西南": "SO",
+      "西": "O",
+      "西北": "NO"
+    }
   },
   "Search": {
     "placeholder": "Rechercher des voies...",

@@ -125,7 +125,36 @@
     "wednesday": "Wed",
     "thursday": "Thu",
     "friday": "Fri",
-    "saturday": "Sat"
+    "saturday": "Sat",
+    "weatherDesc": {
+      "晴": "Sunny",
+      "少云": "Few Clouds",
+      "晴间多云": "Partly Cloudy",
+      "多云": "Cloudy",
+      "阴": "Overcast",
+      "阵雨": "Showers",
+      "雷阵雨": "Thunderstorm",
+      "小雨": "Light Rain",
+      "中雨": "Moderate Rain",
+      "大雨": "Heavy Rain",
+      "暴雨": "Rainstorm",
+      "雨夹雪": "Sleet",
+      "小雪": "Light Snow",
+      "中雪": "Moderate Snow",
+      "大雪": "Heavy Snow",
+      "雾": "Foggy",
+      "霾": "Hazy"
+    },
+    "windDir": {
+      "北": "N",
+      "东北": "NE",
+      "东": "E",
+      "东南": "SE",
+      "南": "S",
+      "西南": "SW",
+      "西": "W",
+      "西北": "NW"
+    }
   },
   "Search": {
     "placeholder": "Search routes...",
