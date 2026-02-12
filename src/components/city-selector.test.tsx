@@ -1,35 +1,39 @@
 /**
  * CitySelector 组件测试
- * 测试城市选择器的渲染、交互和无障碍特性
+ * 测试两级城市选择器（地级市→区/县）的渲染、交互和无障碍特性
+ *
+ * 注意：组件内部使用 PREFECTURES 常量（来自 city-config.ts）渲染下拉菜单，
+ * 而非 cities prop。测试环境中 next-intl mock 返回翻译 key 作为文本。
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@/test/utils'
 import { CitySelector } from './city-selector'
 import type { CityConfig, CityId } from '@/lib/city-config'
 
-// Mock 城市数据
-const mockCities: CityConfig[] = [
-  {
-    id: 'luoyuan' as CityId,
-    name: '罗源',
-    shortName: '罗源',
-    adcode: '350123',
-    coordinates: { lng: 119.5495, lat: 26.4893 },
-    available: true,
-  },
-  {
-    id: 'xiamen' as CityId,
-    name: '厦门',
-    shortName: '厦门',
-    adcode: '350200',
-    coordinates: { lng: 118.0894, lat: 24.4798 },
-    available: false,
-  },
-]
+// Mock 城市数据（仅用于 props 传入，组件内部渲染使用 PREFECTURES + getCityById）
+const luoyuanCity: CityConfig = {
+  id: 'luoyuan' as CityId,
+  name: '罗源',
+  shortName: '罗源',
+  adcode: '350123',
+  coordinates: { lng: 119.5495, lat: 26.4893 },
+  available: true,
+}
+
+const xiamenCity: CityConfig = {
+  id: 'xiamen' as CityId,
+  name: '厦门',
+  shortName: '厦门',
+  adcode: '350200',
+  coordinates: { lng: 118.0894, lat: 24.4798 },
+  available: true,
+}
+
+const mockCities: CityConfig[] = [luoyuanCity, xiamenCity]
 
 describe('CitySelector', () => {
   const defaultProps = {
-    currentCity: mockCities[0],
+    currentCity: luoyuanCity,
     cities: mockCities,
     onCityChange: vi.fn(),
   }
@@ -39,10 +43,18 @@ describe('CitySelector', () => {
   })
 
   describe('渲染', () => {
-    it('应该显示当前城市名称', () => {
+    it('应该显示「地级市 · 区名」格式的标题', () => {
       render(<CitySelector {...defaultProps} />)
 
-      expect(screen.getByText('罗源')).toBeInTheDocument()
+      // luoyuan 属于福州市，标题格式：「福州 · 罗源」
+      expect(screen.getByText('福州 · 罗源')).toBeInTheDocument()
+    })
+
+    it('地级市名等于区名时只显示一次', () => {
+      render(<CitySelector {...defaultProps} currentCity={xiamenCity} />)
+
+      // 厦门市 → 厦门区，名称相同，不重复
+      expect(screen.getByText('厦门')).toBeInTheDocument()
     })
 
     it('应该渲染为可点击的按钮', () => {
@@ -54,8 +66,9 @@ describe('CitySelector', () => {
     it('下拉菜单初始应该关闭', () => {
       render(<CitySelector {...defaultProps} />)
 
-      // 不显示其他城市选项
-      expect(screen.queryByText('厦门')).not.toBeInTheDocument()
+      // 不显示地级市选项（翻译 key）
+      expect(screen.queryByText('prefectureFuzhou')).not.toBeInTheDocument()
+      expect(screen.queryByText('prefectureXiamen')).not.toBeInTheDocument()
     })
   })
 
@@ -66,7 +79,21 @@ describe('CitySelector', () => {
       fireEvent.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        expect(screen.getByText('厦门')).toBeInTheDocument()
+        // 两个地级市选项（翻译 key）
+        expect(screen.getByText('prefectureFuzhou')).toBeInTheDocument()
+        expect(screen.getByText('prefectureXiamen')).toBeInTheDocument()
+      })
+    })
+
+    it('多区地级市应自动展开当前选中区的父级', async () => {
+      render(<CitySelector {...defaultProps} />)
+
+      fireEvent.click(screen.getByRole('button'))
+
+      await waitFor(() => {
+        // currentCity=luoyuan → 福州应自动展开，显示所有子区域
+        expect(screen.getByText('罗源')).toBeInTheDocument()
+        expect(screen.getByText('长乐')).toBeInTheDocument()
       })
     })
 
@@ -77,99 +104,115 @@ describe('CitySelector', () => {
       fireEvent.click(button)
 
       await waitFor(() => {
-        expect(screen.getByText('厦门')).toBeInTheDocument()
+        expect(screen.getByText('prefectureXiamen')).toBeInTheDocument()
       })
 
       fireEvent.click(button)
 
       await waitFor(() => {
-        expect(screen.queryByText('厦门')).not.toBeInTheDocument()
+        expect(screen.queryByText('prefectureXiamen')).not.toBeInTheDocument()
       })
     })
 
-    it('应该显示所有城市选项', async () => {
+    it('应该显示所有地级市选项', async () => {
       render(<CitySelector {...defaultProps} />)
 
       fireEvent.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        // 下拉菜单打开后，会有两个"罗源"（标题 + 下拉选项）
-        expect(screen.getAllByText('罗源').length).toBeGreaterThanOrEqual(1)
-        expect(screen.getByText('厦门')).toBeInTheDocument()
+        expect(screen.getByText('prefectureFuzhou')).toBeInTheDocument()
+        expect(screen.getByText('prefectureXiamen')).toBeInTheDocument()
       })
     })
   })
 
   describe('城市可用性', () => {
-    it('不可用城市应显示"即将上线"标签', async () => {
+    it('不可用区域应显示"即将上线"标签', async () => {
       render(<CitySelector {...defaultProps} />)
 
       fireEvent.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        // 使用翻译 key
+        // 长乐 (changle) 在 CITIES 中 available: false
         expect(screen.getByText('comingSoon')).toBeInTheDocument()
       })
     })
 
-    it('不可用城市应该被禁用', async () => {
+    it('不可用区域应该被禁用', async () => {
       render(<CitySelector {...defaultProps} />)
 
       fireEvent.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        const xiamenButtons = screen.getAllByRole('button')
-        // 找到厦门按钮（下拉菜单中的按钮）
-        const xiamenButton = xiamenButtons.find((btn) =>
-          btn.textContent?.includes('厦门')
+        // 福州自动展开，长乐（不可用）按钮应被禁用
+        const buttons = screen.getAllByRole('button')
+        const changleButton = buttons.find((btn) =>
+          btn.textContent?.includes('长乐')
         )
-        expect(xiamenButton).toBeDisabled()
+        expect(changleButton).toBeDisabled()
       })
     })
 
-    it('可用城市应该可点击', async () => {
+    it('可用区域应该可点击', async () => {
       render(<CitySelector {...defaultProps} />)
 
       fireEvent.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        expect(screen.getByText('厦门')).toBeInTheDocument()
+        // 福州自动展开，罗源（可用）按钮应可点击
+        const buttons = screen.getAllByRole('button')
+        const luoyuanButton = buttons.find((btn) =>
+          btn.textContent?.includes('罗源') &&
+          !btn.textContent?.includes('福州')
+        )
+        expect(luoyuanButton).toBeDefined()
+        expect(luoyuanButton).not.toBeDisabled()
       })
-
-      // 获取所有按钮
-      const buttons = screen.getAllByRole('button')
-      // 找到下拉菜单中的罗源按钮（不是标题按钮）
-      const luoyuanButtons = buttons.filter((btn) =>
-        btn.textContent?.includes('罗源')
-      )
-      // 至少有一个罗源按钮（标题或下拉菜单）
-      expect(luoyuanButtons.length).toBeGreaterThanOrEqual(1)
     })
   })
 
   describe('城市选择', () => {
-    it('选择城市应调用 onCityChange', async () => {
+    it('单区地级市点击直接选中', async () => {
       const onCityChange = vi.fn()
-      // 使用厦门作为当前城市，这样罗源就可以被选择
+      render(
+        <CitySelector {...defaultProps} onCityChange={onCityChange} />
+      )
+
+      fireEvent.click(screen.getByRole('button'))
+
+      await waitFor(() => {
+        expect(screen.getByText('prefectureXiamen')).toBeInTheDocument()
+      })
+
+      // 厦门是单区地级市，点击直接选中
+      fireEvent.click(screen.getByText('prefectureXiamen'))
+
+      expect(onCityChange).toHaveBeenCalledWith('xiamen')
+    })
+
+    it('多区地级市需展开后选择区域', async () => {
+      const onCityChange = vi.fn()
       render(
         <CitySelector
           {...defaultProps}
-          currentCity={mockCities[1]}
+          currentCity={xiamenCity}
           onCityChange={onCityChange}
         />
       )
 
       fireEvent.click(screen.getByRole('button'))
 
+      // 先点击福州展开子区域
       await waitFor(() => {
-        const buttons = screen.getAllByRole('button')
-        const luoyuanButton = buttons.find((btn) =>
-          btn.textContent?.includes('罗源')
-        )
-        if (luoyuanButton) {
-          fireEvent.click(luoyuanButton)
-        }
+        expect(screen.getByText('prefectureFuzhou')).toBeInTheDocument()
       })
+      fireEvent.click(screen.getByText('prefectureFuzhou'))
+
+      // 再选择罗源
+      await waitFor(() => {
+        expect(screen.getByText('罗源')).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('罗源'))
 
       expect(onCityChange).toHaveBeenCalledWith('luoyuan')
     })
@@ -177,30 +220,21 @@ describe('CitySelector', () => {
     it('选择城市后应关闭下拉菜单', async () => {
       const onCityChange = vi.fn()
       render(
-        <CitySelector
-          {...defaultProps}
-          currentCity={mockCities[1]}
-          onCityChange={onCityChange}
-        />
+        <CitySelector {...defaultProps} onCityChange={onCityChange} />
       )
 
       fireEvent.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        expect(screen.getByText('罗源')).toBeInTheDocument()
+        expect(screen.getByText('prefectureXiamen')).toBeInTheDocument()
       })
 
-      const buttons = screen.getAllByRole('button')
-      const luoyuanButton = buttons.find((btn) =>
-        btn.textContent?.includes('罗源')
-      )
-      if (luoyuanButton) {
-        fireEvent.click(luoyuanButton)
-      }
+      // 点击厦门（单区，直接选中并关闭）
+      fireEvent.click(screen.getByText('prefectureXiamen'))
 
       await waitFor(() => {
-        // 检查下拉菜单是否关闭（只有一个按钮可见）
-        expect(screen.getAllByRole('button')).toHaveLength(1)
+        // 下拉菜单应已关闭
+        expect(screen.queryByText('prefectureXiamen')).not.toBeInTheDocument()
       })
     })
 
@@ -209,19 +243,17 @@ describe('CitySelector', () => {
 
       fireEvent.click(screen.getByRole('button'))
 
-      // 等待下拉菜单打开
       await waitFor(() => {
-        expect(screen.getByText('厦门')).toBeInTheDocument()
+        // 福州自动展开，找到罗源区域按钮（非标题按钮）
+        const buttons = screen.getAllByRole('button')
+        const luoyuanInDropdown = buttons.find(btn =>
+          btn.textContent?.includes('罗源') &&
+          !btn.textContent?.includes('福州') &&
+          btn.querySelector('svg')
+        )
+        // 当前城市按钮应有勾选图标 (Check SVG)
+        expect(luoyuanInDropdown).toBeTruthy()
       })
-
-      // 检查下拉菜单中的罗源按钮是否包含 Check 图标
-      const buttons = screen.getAllByRole('button')
-      // 找到下拉菜单中的罗源按钮（第二个按钮）
-      const luoyuanInDropdown = buttons.find(btn =>
-        btn.textContent?.includes('罗源') && btn.querySelector('svg')
-      )
-      // 当前城市按钮应该有勾选图标
-      expect(luoyuanInDropdown).toBeTruthy()
     })
   })
 
@@ -268,14 +300,14 @@ describe('CitySelector', () => {
       fireEvent.click(screen.getByRole('button'))
 
       await waitFor(() => {
-        expect(screen.getByText('厦门')).toBeInTheDocument()
+        expect(screen.getByText('prefectureXiamen')).toBeInTheDocument()
       })
 
       // 点击外部
       fireEvent.mouseDown(screen.getByTestId('outside'))
 
       await waitFor(() => {
-        expect(screen.queryByText('厦门')).not.toBeInTheDocument()
+        expect(screen.queryByText('prefectureXiamen')).not.toBeInTheDocument()
       })
     })
   })

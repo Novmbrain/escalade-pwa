@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest'
 import {
   CITIES,
   DEFAULT_CITY_ID,
+  PREFECTURES,
   getCityById,
   getCityName,
   getCityAdcode,
@@ -18,6 +19,8 @@ import {
   getCityByAdcode,
   getNearestCity,
   isValidCityId,
+  getPrefectureByDistrictId,
+  getPrefectureByAdcodePrefix,
   type CityId,
 } from './city-config'
 
@@ -127,11 +130,10 @@ describe('城市配置', () => {
       expect(xiamen?.id).toBe('xiamen')
     })
 
-    it('匹配上级行政区（市级前缀）', () => {
-      // 350100 是福州市的前缀，罗源县 350123 属于福州
+    it('匹配上级行政区（市级前缀）→ 返回 Prefecture defaultDistrict', () => {
+      // 350100 是福州市的前缀，通过 prefecture.defaultDistrict 返回 luoyuan
       const city = getCityByAdcode('350100')
-      // 应该匹配到罗源（如果是唯一匹配）
-      expect(city).toBeDefined()
+      expect(city?.id).toBe('luoyuan')
     })
 
     it('无匹配返回 undefined', () => {
@@ -155,11 +157,11 @@ describe('城市配置', () => {
     })
 
     it('中间位置返回最近的城市', () => {
-      // 在罗源和厦门之间但更接近罗源
+      // 在罗源和厦门之间的坐标
       const midCoords = { lng: 119.0, lat: 25.8 }
       const nearest = getNearestCity(midCoords)
-      // 应该返回其中之一
-      expect(['luoyuan', 'xiamen']).toContain(nearest.id)
+      // 应该返回其中之一（changle 坐标也在此区域）
+      expect(['luoyuan', 'xiamen', 'changle']).toContain(nearest.id)
     })
 
     it('极端坐标不会崩溃', () => {
@@ -213,6 +215,61 @@ describe('城市配置', () => {
       expect(isValidCityId('invalid')).toBe(false)
       expect(isValidCityId('')).toBe(false)
       expect(isValidCityId('LUOYUAN')).toBe(false) // 大小写敏感
+    })
+  })
+
+  describe('PREFECTURES 数据完整性', () => {
+    it('每个地级市的 districts 都是有效的 CityId', () => {
+      PREFECTURES.forEach((pref) => {
+        pref.districts.forEach((d) => {
+          expect(isValidCityId(d)).toBe(true)
+        })
+      })
+    })
+
+    it('每个地级市的 defaultDistrict 在其 districts 中', () => {
+      PREFECTURES.forEach((pref) => {
+        expect(pref.districts).toContain(pref.defaultDistrict)
+      })
+    })
+  })
+
+  describe('getPrefectureByDistrictId', () => {
+    it('luoyuan 属于福州', () => {
+      const pref = getPrefectureByDistrictId('luoyuan')
+      expect(pref?.id).toBe('fuzhou')
+    })
+
+    it('xiamen 属于厦门', () => {
+      const pref = getPrefectureByDistrictId('xiamen')
+      expect(pref?.id).toBe('xiamen')
+    })
+
+    it('changle 属于福州', () => {
+      const pref = getPrefectureByDistrictId('changle')
+      expect(pref?.id).toBe('fuzhou')
+    })
+
+    it('不存在的 CityId 返回 undefined', () => {
+      const pref = getPrefectureByDistrictId('nonexistent' as CityId)
+      expect(pref).toBeUndefined()
+    })
+  })
+
+  describe('getPrefectureByAdcodePrefix', () => {
+    it('3501 前缀匹配福州', () => {
+      const pref = getPrefectureByAdcodePrefix('3501')
+      expect(pref?.id).toBe('fuzhou')
+    })
+
+    it('3502 前缀匹配厦门', () => {
+      const pref = getPrefectureByAdcodePrefix('3502')
+      expect(pref?.id).toBe('xiamen')
+    })
+
+    it('无匹配前缀返回 undefined', () => {
+      const pref = getPrefectureByAdcodePrefix('9999')
+      expect(pref).toBeUndefined()
     })
   })
 

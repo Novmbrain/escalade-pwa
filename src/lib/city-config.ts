@@ -79,6 +79,35 @@ export interface CityConfig {
  */
 export const CITIES: CityConfig[] = [...CITIES_DATA]
 
+// ==================== 地级市配置 ====================
+
+export interface PrefectureConfig {
+  id: string
+  name: string
+  shortName: string
+  /** 该地级市下的区/县 CityId 列表（有序） */
+  districts: CityId[]
+  /** IP 定位命中市级 adcode 时默认选中的区 */
+  defaultDistrict: CityId
+}
+
+export const PREFECTURES: PrefectureConfig[] = [
+  {
+    id: 'fuzhou',
+    name: '福州',
+    shortName: '福州',
+    districts: ['luoyuan', 'changle'],
+    defaultDistrict: 'luoyuan',
+  },
+  {
+    id: 'xiamen',
+    name: '厦门',
+    shortName: '厦门',
+    districts: ['xiamen'],
+    defaultDistrict: 'xiamen',
+  },
+]
+
 // ==================== 工具函数 ====================
 
 /**
@@ -120,18 +149,38 @@ export function isCityAvailable(cityId: CityId): boolean {
 }
 
 /**
+ * 根据 CityId 反查所属地级市
+ */
+export function getPrefectureByDistrictId(districtId: CityId): PrefectureConfig | undefined {
+  return PREFECTURES.find(p => p.districts.includes(districtId))
+}
+
+/**
+ * 根据市级 adcode 前缀查找地级市
+ */
+export function getPrefectureByAdcodePrefix(prefix: string): PrefectureConfig | undefined {
+  return PREFECTURES.find(p =>
+    p.districts.some(d => getCityById(d)?.adcode.startsWith(prefix))
+  )
+}
+
+/**
  * 根据 adcode 查找城市
  * 用于 IP 定位返回的 adcode 匹配
  */
 export function getCityByAdcode(adcode: string): CityConfig | undefined {
-  // 先精确匹配
+  // 精确匹配
   const exact = CITIES.find((city) => city.adcode === adcode)
   if (exact) return exact
 
-  // 再匹配上级行政区（如 350100 匹配 350123）
-  // adcode 前 4 位是市级代码
+  // 前缀匹配 → 通过 Prefecture.defaultDistrict 决定
   const cityPrefix = adcode.slice(0, 4)
-  return CITIES.find((city) => city.adcode.startsWith(cityPrefix))
+  const prefecture = getPrefectureByAdcodePrefix(cityPrefix)
+  if (prefecture) {
+    return getCityById(prefecture.defaultDistrict)
+  }
+
+  return undefined
 }
 
 /**

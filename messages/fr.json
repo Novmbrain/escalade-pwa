@@ -176,7 +176,9 @@
     "currentCity": "Ville actuelle",
     "dataAvailable": "Disponible",
     "comingSoon": "Bientôt disponible",
-    "firstVisitHint": "Appuyez pour changer de ville"
+    "firstVisitHint": "Appuyez pour changer de ville",
+    "prefectureFuzhou": "Fuzhou",
+    "prefectureXiamen": "Xiamen"
   },
   "EmptyCity": {
     "title": "Données pour {city} bientôt disponibles",
