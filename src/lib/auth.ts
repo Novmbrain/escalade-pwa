@@ -6,67 +6,85 @@ import { Resend } from 'resend'
 import { getDatabase, clientPromise } from '@/lib/mongodb'
 import { magicLinkEmailTemplate } from '@/lib/email-templates'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+/**
+ * Lazy singleton — auth 实例仅在首次请求时初始化，
+ * 避免 top-level await 在 Vercel 构建期间触发 DB 连接或
+ * 因缺少 BETTER_AUTH_SECRET 而崩溃。
+ */
+let _auth: ReturnType<typeof betterAuth> | null = null
+let _promise: Promise<ReturnType<typeof betterAuth>> | null = null
 
-const client = await clientPromise
-const db = await getDatabase()
+export function getAuth(): Promise<ReturnType<typeof betterAuth>> {
+  if (_auth) return Promise.resolve(_auth)
+  if (!_promise) {
+    _promise = (async () => {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      const client = await clientPromise
+      const db = await getDatabase()
 
-export const auth = betterAuth({
-  database: mongodbAdapter(db, { client }),
+      const instance = betterAuth({
+        database: mongodbAdapter(db, { client }),
 
-  appName: '寻岩记 BlocTop',
-  baseURL: process.env.NEXT_PUBLIC_APP_URL,
+        appName: '寻岩记 BlocTop',
+        baseURL: process.env.NEXT_PUBLIC_APP_URL,
 
-  user: {
-    additionalFields: {
-      role: {
-        type: 'string',
-        defaultValue: 'user',
-      },
-    },
-  },
+        user: {
+          additionalFields: {
+            role: {
+              type: 'string',
+              defaultValue: 'user',
+            },
+          },
+        },
 
-  plugins: [
-    magicLink({
-      expiresIn: 600, // 10 minutes
-      sendMagicLink: async ({ email, url }) => {
-        // TODO: 域名验证后改回 'noreply@bouldering.top'
-        const from = process.env.NODE_ENV === 'production'
-          ? '寻岩记 <noreply@bouldering.top>'
-          : '寻岩记 <onboarding@resend.dev>'
-        const { error } = await resend.emails.send({
-          from,
-          to: email,
-          subject: '登录寻岩记 BlocTop',
-          html: magicLinkEmailTemplate(url),
-        })
-        if (error) {
-          console.error('[Auth] Magic Link email failed:', error)
-          throw new Error(error.message)
-        }
-      },
-    }),
+        plugins: [
+          magicLink({
+            expiresIn: 600, // 10 minutes
+            sendMagicLink: async ({ email, url }) => {
+              // TODO: 域名验证后改回 'noreply@bouldering.top'
+              const from = process.env.NODE_ENV === 'production'
+                ? '寻岩记 <noreply@bouldering.top>'
+                : '寻岩记 <onboarding@resend.dev>'
+              const { error } = await resend.emails.send({
+                from,
+                to: email,
+                subject: '登录寻岩记 BlocTop',
+                html: magicLinkEmailTemplate(url),
+              })
+              if (error) {
+                console.error('[Auth] Magic Link email failed:', error)
+                throw new Error(error.message)
+              }
+            },
+          }),
 
-    passkey({
-      rpID: process.env.NODE_ENV === 'production'
-        ? 'bouldering.top'
-        : 'localhost',
-      rpName: '寻岩记 BlocTop',
-      origin: process.env.NEXT_PUBLIC_APP_URL!,
-    }),
-  ],
+          passkey({
+            rpID: process.env.NODE_ENV === 'production'
+              ? 'bouldering.top'
+              : 'localhost',
+            rpName: '寻岩记 BlocTop',
+            origin: process.env.NEXT_PUBLIC_APP_URL!,
+          }),
+        ],
 
-  session: {
-    expiresIn: 60 * 60 * 24 * 30, // 30 days
-    updateAge: 60 * 60 * 24, // refresh daily
-    cookieCache: {
-      enabled: true,
-      maxAge: 60 * 5, // 5 min cache to reduce DB queries
-    },
-  },
+        session: {
+          expiresIn: 60 * 60 * 24 * 30, // 30 days
+          updateAge: 60 * 60 * 24, // refresh daily
+          cookieCache: {
+            enabled: true,
+            maxAge: 60 * 5, // 5 min cache to reduce DB queries
+          },
+        },
 
-  rateLimit: {
-    window: 60,
-    max: 10,
-  },
-})
+        rateLimit: {
+          window: 60,
+          max: 10,
+        },
+      })
+
+      _auth = instance
+      return instance
+    })()
+  }
+  return _promise
+}
