@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { Palette, Heart, Copy, Check, User, Send, Users, Globe, LogIn, LogOut, Edit3, Fingerprint, Mountain, Trash2 } from 'lucide-react'
+import { Palette, Heart, Copy, Check, User, Send, Users, Globe, LogIn, LogOut, Edit3, Fingerprint, Mountain, Trash2, KeyRound } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { AppTabbar } from '@/components/app-tabbar'
 import { ThemeSwitcher } from '@/components/theme-switcher'
@@ -13,8 +13,9 @@ import { Drawer } from '@/components/ui/drawer'
 import { Textarea } from '@/components/ui/textarea'
 import { ImageViewer } from '@/components/ui/image-viewer'
 import { useToast } from '@/components/ui/toast'
-import { useSession, signOut } from '@/lib/auth-client'
+import { useSession, signOut, authClient } from '@/lib/auth-client'
 import { usePasskeyManagement } from '@/hooks/use-passkey-management'
+import { Input } from '@/components/ui/input'
 // 访问统计缓存 key
 const VISITS_CACHE_KEY = 'total_visits_cache'
 
@@ -31,6 +32,7 @@ const AUTHOR = {
 export default function ProfilePage() {
   const t = useTranslations('Profile')
   const tAuth = useTranslations('Auth')
+  const tCommon = useTranslations('Common')
   const tIntro = useTranslations('Intro')
   const { showToast } = useToast()
 
@@ -58,6 +60,28 @@ export default function ProfilePage() {
   const [feedbackContent, setFeedbackContent] = useState('')
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+
+  // Password management state
+  const [passwordExpanded, setPasswordExpanded] = useState(false)
+  const [pwNewPassword, setPwNewPassword] = useState('')
+  const [pwConfirmPassword, setPwConfirmPassword] = useState('')
+  const [pwCurrentPassword, setPwCurrentPassword] = useState('')
+  const [isSettingPassword, setIsSettingPassword] = useState(false)
+  // Check if user has a credential (password) account
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (!session) return
+    // Check accounts to see if user has a credential type
+    authClient.listAccounts().then((res) => {
+      const accounts = res.data
+      if (accounts) {
+        setHasPassword(accounts.some((a: { providerId?: string; provider?: string }) => a.providerId === 'credential' || a.provider === 'credential'))
+      }
+    }).catch(() => {
+      // Silently fail — password section will show "set password" by default
+    })
+  }, [session])
 
   // 访问统计状态
   const [totalVisits, setTotalVisits] = useState<number | null>(null)
@@ -165,6 +189,71 @@ export default function ProfilePage() {
       showToast(tAuth('passkeyFailed'), 'error')
     }
   }, [deletePasskey, showToast, tAuth])
+
+  const handleSetPassword = useCallback(async () => {
+    if (!pwNewPassword || !pwConfirmPassword || isSettingPassword) return
+    if (pwNewPassword.length < 8) {
+      showToast(tAuth('passwordTooShort'), 'error')
+      return
+    }
+    if (pwNewPassword !== pwConfirmPassword) {
+      showToast(tAuth('passwordMismatch'), 'error')
+      return
+    }
+    setIsSettingPassword(true)
+    try {
+      const res = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: pwNewPassword }),
+      })
+      if (res.ok) {
+        showToast(tAuth('passwordSetSuccess'), 'success')
+        setHasPassword(true)
+        setPasswordExpanded(false)
+        setPwNewPassword('')
+        setPwConfirmPassword('')
+      } else {
+        showToast(tAuth('passwordSetFailed'), 'error')
+      }
+    } catch {
+      showToast(tAuth('passwordSetFailed'), 'error')
+    } finally {
+      setIsSettingPassword(false)
+    }
+  }, [pwNewPassword, pwConfirmPassword, isSettingPassword, showToast, tAuth])
+
+  const handleChangePassword = useCallback(async () => {
+    if (!pwCurrentPassword || !pwNewPassword || !pwConfirmPassword || isSettingPassword) return
+    if (pwNewPassword.length < 8) {
+      showToast(tAuth('passwordTooShort'), 'error')
+      return
+    }
+    if (pwNewPassword !== pwConfirmPassword) {
+      showToast(tAuth('passwordMismatch'), 'error')
+      return
+    }
+    setIsSettingPassword(true)
+    try {
+      const { error } = await authClient.changePassword({
+        currentPassword: pwCurrentPassword,
+        newPassword: pwNewPassword,
+      })
+      if (error) {
+        showToast(tAuth('passwordChangeFailed'), 'error')
+      } else {
+        showToast(tAuth('passwordChanged'), 'success')
+        setPasswordExpanded(false)
+        setPwCurrentPassword('')
+        setPwNewPassword('')
+        setPwConfirmPassword('')
+      }
+    } catch {
+      showToast(tAuth('passwordChangeFailed'), 'error')
+    } finally {
+      setIsSettingPassword(false)
+    }
+  }, [pwCurrentPassword, pwNewPassword, pwConfirmPassword, isSettingPassword, showToast, tAuth])
 
   return (
     <>
@@ -327,6 +416,84 @@ export default function ProfilePage() {
                       {session.user.email}
                     </p>
                   </div>
+                </div>
+
+                {/* 密码管理 */}
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <KeyRound className="w-3.5 h-3.5" style={{ color: 'var(--theme-primary)' }} />
+                    <span className="text-xs font-semibold" style={{ color: 'var(--theme-on-surface)' }}>
+                      {hasPassword ? tAuth('hasPassword') : tAuth('noPassword')}
+                    </span>
+                  </div>
+
+                  {!passwordExpanded ? (
+                    <button
+                      onClick={() => setPasswordExpanded(true)}
+                      className="text-xs font-medium"
+                      style={{ color: 'var(--theme-primary)' }}
+                    >
+                      {hasPassword ? tAuth('changePassword') : tAuth('setPassword')}
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      {hasPassword && (
+                        <Input
+                          value={pwCurrentPassword}
+                          onChange={setPwCurrentPassword}
+                          placeholder={tAuth('currentPassword')}
+                          variant="form"
+                          type="password"
+                          autoComplete="current-password"
+                        />
+                      )}
+                      <Input
+                        value={pwNewPassword}
+                        onChange={setPwNewPassword}
+                        placeholder={tAuth('newPassword')}
+                        variant="form"
+                        type="password"
+                        autoComplete="new-password"
+                      />
+                      <Input
+                        value={pwConfirmPassword}
+                        onChange={setPwConfirmPassword}
+                        placeholder={tAuth('confirmPassword')}
+                        variant="form"
+                        type="password"
+                        autoComplete="new-password"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setPasswordExpanded(false)
+                            setPwCurrentPassword('')
+                            setPwNewPassword('')
+                            setPwConfirmPassword('')
+                          }}
+                          className="flex-1 p-2 text-xs font-medium transition-all active:scale-[0.98]"
+                          style={{
+                            color: 'var(--theme-on-surface-variant)',
+                            borderRadius: 'var(--theme-radius-lg)',
+                          }}
+                        >
+                          {tCommon('cancel')}
+                        </button>
+                        <button
+                          onClick={hasPassword ? handleChangePassword : handleSetPassword}
+                          disabled={isSettingPassword}
+                          className="flex-1 p-2 text-xs font-medium transition-all active:scale-[0.98] disabled:opacity-40"
+                          style={{
+                            backgroundColor: 'var(--theme-primary)',
+                            color: 'var(--theme-on-primary)',
+                            borderRadius: 'var(--theme-radius-lg)',
+                          }}
+                        >
+                          {hasPassword ? tAuth('changePassword') : tAuth('setPassword')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Passkey 管理 */}
