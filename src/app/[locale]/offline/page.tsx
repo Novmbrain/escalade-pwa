@@ -7,13 +7,14 @@
  * 数据来源：IndexedDB
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { WifiOff, CloudDownload, RefreshCw, Mountain, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AppTabbar } from '@/components/app-tabbar'
 import { getAllOfflineCrags, type OfflineCragData } from '@/lib/offline-storage'
+import { PREFECTURES, getPrefectureByDistrictId, isValidCityId, type PrefectureConfig } from '@/lib/city-config'
 
 export default function OfflinePage() {
   const t = useTranslations('OfflinePage')
@@ -61,6 +62,40 @@ export default function OfflinePage() {
       window.location.reload()
     }
   }
+
+  // Group crags by prefecture
+  const cragsByPrefecture = useMemo(() => {
+    const groups: { prefecture: PrefectureConfig; crags: OfflineCragData[] }[] = []
+    const ungrouped: OfflineCragData[] = []
+
+    const prefectureMap = new Map<string, OfflineCragData[]>()
+
+    for (const crag of offlineCrags) {
+      const cityId = crag.crag.cityId
+      if (cityId && isValidCityId(cityId)) {
+        const prefecture = getPrefectureByDistrictId(cityId)
+        if (prefecture) {
+          if (!prefectureMap.has(prefecture.id)) {
+            prefectureMap.set(prefecture.id, [])
+          }
+          prefectureMap.get(prefecture.id)!.push(crag)
+          continue
+        }
+      }
+      ungrouped.push(crag)
+    }
+
+    for (const pref of PREFECTURES) {
+      const crags = prefectureMap.get(pref.id)
+      if (crags && crags.length > 0) {
+        groups.push({ prefecture: pref, crags })
+      }
+    }
+
+    return { groups, ungrouped }
+  }, [offlineCrags])
+
+  const showPrefectureHeaders = cragsByPrefecture.groups.length >= 2
 
   // 跳转到在线首页
   const goHome = () => {
@@ -131,44 +166,23 @@ export default function OfflinePage() {
             >
               {t('downloadedCrags', { count: offlineCrags.length })}
             </h2>
-            {offlineCrags.map((cragData) => (
-              <button
-                key={cragData.cragId}
-                onClick={() => router.push(`/${locale}/route?crag=${cragData.cragId}`)}
-                className="w-full p-4 flex items-center gap-3 text-left"
-                style={{
-                  backgroundColor: 'var(--theme-surface)',
-                  borderRadius: 'var(--theme-radius-xl)',
-                  boxShadow: 'var(--theme-shadow-sm)',
-                }}
-              >
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{
-                    backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))',
-                  }}
-                >
-                  <Mountain className="w-6 h-6" style={{ color: 'var(--theme-primary)' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3
-                    className="font-semibold truncate"
-                    style={{ color: 'var(--theme-on-surface)' }}
-                  >
-                    {cragData.crag.name}
-                  </h3>
-                  <p
-                    className="text-sm"
+            {cragsByPrefecture.groups.map((group) => (
+              <div key={group.prefecture.id}>
+                {showPrefectureHeaders && (
+                  <h2
+                    className="text-sm font-medium mt-4 mb-2 px-1"
                     style={{ color: 'var(--theme-on-surface-variant)' }}
                   >
-                    {t('routeCount', { count: cragData.routes.length })}
-                  </p>
-                </div>
-                <ChevronRight
-                  className="w-5 h-5 flex-shrink-0"
-                  style={{ color: 'var(--theme-on-surface-variant)' }}
-                />
-              </button>
+                    {group.prefecture.name}
+                  </h2>
+                )}
+                {group.crags.map((cragData) => (
+                  <CragCard key={cragData.cragId} cragData={cragData} locale={locale} router={router} t={t} />
+                ))}
+              </div>
+            ))}
+            {cragsByPrefecture.ungrouped.map((cragData) => (
+              <CragCard key={cragData.cragId} cragData={cragData} locale={locale} router={router} t={t} />
             ))}
           </div>
         ) : (
@@ -232,5 +246,56 @@ export default function OfflinePage() {
       {/* 底部导航栏 */}
       <AppTabbar />
     </div>
+  )
+}
+
+function CragCard({
+  cragData,
+  locale,
+  router,
+  t,
+}: {
+  cragData: OfflineCragData
+  locale: string
+  router: ReturnType<typeof useRouter>
+  t: ReturnType<typeof useTranslations<'OfflinePage'>>
+}) {
+  return (
+    <button
+      onClick={() => router.push(`/${locale}/route?crag=${cragData.cragId}`)}
+      className="w-full p-4 flex items-center gap-3 text-left"
+      style={{
+        backgroundColor: 'var(--theme-surface)',
+        borderRadius: 'var(--theme-radius-xl)',
+        boxShadow: 'var(--theme-shadow-sm)',
+      }}
+    >
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{
+          backgroundColor: 'color-mix(in srgb, var(--theme-primary) 15%, var(--theme-surface))',
+        }}
+      >
+        <Mountain className="w-6 h-6" style={{ color: 'var(--theme-primary)' }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3
+          className="font-semibold truncate"
+          style={{ color: 'var(--theme-on-surface)' }}
+        >
+          {cragData.crag.name}
+        </h3>
+        <p
+          className="text-sm"
+          style={{ color: 'var(--theme-on-surface-variant)' }}
+        >
+          {t('routeCount', { count: cragData.routes.length })}
+        </p>
+      </div>
+      <ChevronRight
+        className="w-5 h-5 flex-shrink-0"
+        style={{ color: 'var(--theme-on-surface-variant)' }}
+      />
+    </button>
   )
 }
