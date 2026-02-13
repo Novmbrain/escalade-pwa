@@ -450,5 +450,9 @@
     "passwordChangeFailed": "Échec du changement de mot de passe",
     "hasPassword": "Mot de passe défini",
     "noPassword": "Aucun mot de passe défini"
+  },
+  "MaintenanceBanner": {
+    "message": "Le site rencontre des problèmes. Certaines fonctions peuvent être indisponibles.",
+    "dismiss": "Fermer"
   }
 }
