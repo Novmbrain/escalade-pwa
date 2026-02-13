@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Settings, Heart, Copy, Check, User, Send, Users, LogIn, Mountain, Info, ChevronRight } from 'lucide-react'
@@ -34,8 +34,9 @@ export default function ProfilePage() {
   const tAuth = useTranslations('Auth')
   const tIntro = useTranslations('Intro')
 
-  // Auth state
-  const { data: session } = useSession()
+  // Auth state — extract refetch to sync session after avatar upload
+  const sessionHook = useSession()
+  const session = sessionHook.data
   const isLoggedIn = !!session
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin'
 
@@ -44,6 +45,17 @@ export default function ProfilePage() {
   const avatarUrl = localAvatarUrl !== undefined
     ? localAvatarUrl
     : (session?.user as { image?: string | null } | undefined)?.image ?? null
+
+  // Keep refetch in a ref so the callback stays stable
+  const sessionRefetchRef = useRef<(params?: { query?: Record<string, unknown> }) => Promise<void>>()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sessionRefetchRef.current = (sessionHook as any).refetch
+
+  const handleAvatarChange = useCallback((url: string | null) => {
+    setLocalAvatarUrl(url)
+    // Force useSession() atom to refetch from DB, bypassing cookie cache
+    sessionRefetchRef.current?.({ query: { disableCookieCache: true } })
+  }, [])
 
   // Drawer states
   const [securityDrawerOpen, setSecurityDrawerOpen] = useState(false)
@@ -325,7 +337,7 @@ export default function ProfilePage() {
             },
           }}
           isAdmin={isAdmin}
-          onAvatarChange={setLocalAvatarUrl}
+          onAvatarChange={handleAvatarChange}
         />
       )}
 
