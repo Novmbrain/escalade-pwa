@@ -21,6 +21,7 @@ import { TopoLineOverlay, type TopoLineOverlayRef } from '@/components/topo-line
 import { MultiTopoLineOverlay, type MultiTopoLineOverlayRef, type MultiTopoRoute } from '@/components/multi-topo-line-overlay'
 import { RouteLegendPanel } from '@/components/route-legend-panel'
 import { getGradeColor } from '@/lib/tokens'
+import { vToFont } from '@/lib/grade-utils'
 import { TOPO_ANIMATION_CONFIG } from '@/lib/topo-constants'
 import { useFaceImage } from '@/hooks/use-face-image'
 import type { Route, Crag, BetaLink } from '@/types'
@@ -320,6 +321,14 @@ export function RouteDetailDrawer({
               >
                 {route.grade}
               </span>
+              {vToFont(route.grade) && (
+                <span
+                  className="text-sm shrink-0"
+                  style={{ color: 'var(--theme-on-surface-variant)' }}
+                >
+                  {vToFont(route.grade)}
+                </span>
+              )}
               <h2
                 className="text-2xl font-bold"
                 style={{ color: 'var(--theme-on-surface)' }}
