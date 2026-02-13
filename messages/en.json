@@ -482,5 +482,9 @@
     "passwordChangeFailed": "Failed to change password",
     "hasPassword": "Password set",
     "noPassword": "No password set"
+  },
+  "MaintenanceBanner": {
+    "message": "We're experiencing issues. Some features may be unavailable.",
+    "dismiss": "Dismiss"
   }
 }

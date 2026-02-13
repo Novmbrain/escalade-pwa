@@ -482,5 +482,9 @@
     "passwordChangeFailed": "密码修改失败",
     "hasPassword": "已设置密码",
     "noPassword": "未设置密码"
+  },
+  "MaintenanceBanner": {
+    "message": "网站遇到问题，部分功能可能不可用",
+    "dismiss": "关闭"
   }
 }

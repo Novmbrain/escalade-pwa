@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/ui/toast'
 import { OfflineDownloadProvider } from '@/components/offline-download-provider'
 import { FaceImageProvider } from '@/components/face-image-provider'
 import OfflineIndicator from '@/components/offline-indicator'
+import { MaintenanceBanner } from '@/components/maintenance-banner'
 import SWUpdatePrompt from '@/components/sw-update-prompt'
 import { LocaleDetector } from '@/components/locale-detector'
 
@@ -99,6 +100,7 @@ export default async function LocaleLayout({ children, params }: Props) {
               }}
             >
               <LocaleDetector />
+              <MaintenanceBanner />
               <OfflineIndicator />
               {children}
               <SWUpdatePrompt />
