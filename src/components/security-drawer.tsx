@@ -10,7 +10,7 @@ import { Drawer } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
 import { UserAvatar } from '@/components/user-avatar'
-import { signOut, authClient, getSession } from '@/lib/auth-client'
+import { signOut, authClient } from '@/lib/auth-client'
 import { usePasskeyManagement } from '@/hooks/use-passkey-management'
 import { getPasskeyProvider } from '@/lib/passkey-providers'
 
@@ -180,8 +180,6 @@ export function SecurityDrawer({ isOpen, onClose, session, isAdmin, onAvatarChan
       const { avatarUrl } = await res.json()
       showToast(t('avatarUpdated'), 'success')
       onAvatarChange?.(avatarUrl)
-      // Force session refresh to sync user.image past cookieCache
-      await getSession({ query: { disableCookieCache: true } })
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : t('avatarUploadFailed'),
@@ -202,8 +200,6 @@ export function SecurityDrawer({ isOpen, onClose, session, isAdmin, onAvatarChan
       if (!res.ok) throw new Error()
       showToast(t('avatarDeleted'), 'success')
       onAvatarChange?.(null)
-      // Force session refresh to sync user.image past cookieCache
-      await getSession({ query: { disableCookieCache: true } })
     } catch {
       showToast(t('avatarDeleteFailed'), 'error')
     } finally {

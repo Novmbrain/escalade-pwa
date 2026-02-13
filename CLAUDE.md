@@ -372,6 +372,12 @@ import { Link } from '@/i18n/navigation'
 - **编辑器保护**: `editor/layout.tsx` 为 Server Component，检查 `session.user.role === 'admin'`
 - **MongoDB**: 自动创建 `user`, `session`, `account`, `verification`, `passkey` collections (单数命名)
 - **Hook**: `usePasskeyManagement()` — Passkey 列表/添加/删除
+- **Session cookieCache**: 服务端 `maxAge: 300` (5 分钟)，绕过 better-auth 直接修改 `user` 集合后需刷新 session
+- **⚠️ 双通道陷阱**: `getSession()` 和 `useSession()` 是**完全独立**的数据通道：
+  - `getSession()` — 走 client proxy，standalone fetch，返回数据但**不更新** nanostores session atom
+  - `useSession()` — 订阅 nanostores atom，仅在 `$sessionSignal` toggle 时自动 refetch（仅 sign-in/sign-out/update-user 等 mutation 路径触发）
+  - **正确刷新方式**: 使用 session atom 的 `refetch` 方法：`(useSession() as any).refetch({ query: { disableCookieCache: true } })`
+  - **错误方式**: ~~`getSession({ query: { disableCookieCache: true } })`~~ — 不会更新任何 `useSession()` hook
 
 > 架构详情见 `doc/AUTH_SYSTEM.md`
 
