@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Users,
   Search,
@@ -59,7 +59,7 @@ export default function UserManagementPage() {
   const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null)
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Role change state
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null)
@@ -79,6 +79,7 @@ export default function UserManagementPage() {
         },
       })
       if (data) {
+        // better-auth User type is close to UserItem but includes extra fields; safe to cast
         setUsers(data.users as unknown as UserItem[])
         setTotal(data.total)
       }
@@ -96,15 +97,21 @@ export default function UserManagementPage() {
     }
   }, [isSessionPending, userRole, fetchUsers])
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
+  }, [])
+
   // Debounced search
   const handleSearch = (value: string) => {
     setSearchQuery(value)
-    if (searchTimer) clearTimeout(searchTimer)
-    const timer = setTimeout(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => {
       setOffset(0)
       fetchUsers(value, 0)
     }, 300)
-    setSearchTimer(timer)
   }
 
   // Pagination
@@ -124,8 +131,8 @@ export default function UserManagementPage() {
     if (!selectedUser) return
     setChangingRole(true)
     try {
-      // better-auth types only allow 'user' | 'admin', but our custom UserRole
-      // includes 'crag_creator' which is stored as a string in MongoDB
+      // better-auth's TS types only accept 'user' | 'admin', but setRole endpoint
+      // stores the value as a plain string in MongoDB — 'crag_creator' works at runtime
       await authClient.admin.setRole({
         userId: selectedUser.id,
         role: role as 'user' | 'admin',
@@ -172,7 +179,7 @@ export default function UserManagementPage() {
           <Input
             value={searchQuery}
             onChange={handleSearch}
-            placeholder="搜索邮箱或用户名..."
+            placeholder="搜索邮箱..."
             className="pl-10"
           />
         </div>
