@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, Image as ImageIcon, Edit3, Play, Mountain, MapPin } from 'lucide-react'
+import { ArrowLeft, Image as ImageIcon, Edit3, Play, Mountain, MapPin, Users } from 'lucide-react'
 import { Link } from '@/i18n/navigation'
 import { AppTabbar } from '@/components/app-tabbar'
 import { useSession } from '@/lib/auth-client'
@@ -51,6 +51,14 @@ export default function TopoEditorPage() {
       title: 'Beta 管理',
       description: '管理用户提交的 Beta 视频',
       detail: '选择线路 → 查看 Beta → 编辑或删除',
+    },
+    {
+      href: '/editor/users',
+      icon: Users,
+      title: '用户管理',
+      description: '管理用户角色和权限',
+      detail: '搜索用户 → 修改角色 → admin / 岩场创建者 / 普通用户',
+      adminOnly: true,
     },
     {
       href: '/editor/cities',
