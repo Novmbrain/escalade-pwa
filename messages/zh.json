@@ -446,6 +446,7 @@
     "firstTimeHint": "首次使用？输入邮箱即可注册",
     "magicLinkSent": "登录链接已发送到 {email}",
     "magicLinkSentHint": "请查收邮箱并点击链接",
+    "checkSpamHint": "如果没有收到，请检查垃圾邮件文件夹",
     "resendIn": "{seconds} 秒后可重发",
     "resend": "重新发送",
     "backToHome": "返回首页",

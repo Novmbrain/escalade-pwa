@@ -266,10 +266,16 @@ export default function LoginPage() {
                 {t('magicLinkSent', { email })}
               </h2>
               <p
-                className="text-sm mb-6"
+                className="text-sm mb-1"
                 style={{ color: 'var(--theme-on-surface-variant)' }}
               >
                 {t('magicLinkSentHint')}
+              </p>
+              <p
+                className="text-xs mb-6"
+                style={{ color: 'var(--theme-on-surface-variant)', opacity: 0.7 }}
+              >
+                {t('checkSpamHint')}
               </p>
 
               {countdown > 0 ? (

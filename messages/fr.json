@@ -414,6 +414,7 @@
     "firstTimeHint": "Première visite ? Entrez votre e-mail pour vous inscrire",
     "magicLinkSent": "Lien de connexion envoyé à {email}",
     "magicLinkSentHint": "Veuillez vérifier votre boîte de réception et cliquer sur le lien",
+    "checkSpamHint": "Si vous ne le voyez pas, vérifiez votre dossier spam",
     "resendIn": "Renvoyer dans {seconds}s",
     "resend": "Renvoyer",
     "backToHome": "Retour à l'accueil",
