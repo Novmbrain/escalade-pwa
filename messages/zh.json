@@ -375,7 +375,22 @@
     "avatarRemove": "移除头像",
     "avatarDeleting": "正在移除...",
     "avatarDeleted": "头像已移除",
-    "avatarDeleteFailed": "移除失败，请重试"
+    "avatarDeleteFailed": "移除失败，请重试",
+    "personalInfo": "个人信息",
+    "nickname": "昵称",
+    "nicknamePlaceholder": "输入昵称",
+    "heightLabel": "身高 (cm)",
+    "reachLabel": "臂展 (cm)",
+    "apeIndex": "臂展指数",
+    "apeIndexPositive": "+{value} cm",
+    "apeIndexNegative": "{value} cm",
+    "saveProfile": "保存",
+    "profileSaved": "个人信息已更新",
+    "profileSaveFailed": "保存失败，请重试",
+    "nicknamePromptTitle": "设置昵称",
+    "nicknamePromptSubtitle": "给自己起个攀岩代号吧",
+    "nicknamePromptSave": "确定",
+    "nicknamePromptSkip": "稍后再说"
   },
   "Intro": {
     "heroTitle": "寻岩记",

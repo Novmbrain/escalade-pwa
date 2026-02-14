@@ -55,6 +55,18 @@ export function getAuth(): Promise<ReturnType<typeof betterAuth>> {
               type: 'string',
               defaultValue: 'user',
             },
+            name: {
+              type: 'string',
+              required: false,
+            },
+            height: {
+              type: 'number',
+              required: false,
+            },
+            reach: {
+              type: 'number',
+              required: false,
+            },
           },
         },
 
