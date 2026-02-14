@@ -11,7 +11,6 @@ import OfflineIndicator from '@/components/offline-indicator'
 import { MaintenanceBanner } from '@/components/maintenance-banner'
 import SWUpdatePrompt from '@/components/sw-update-prompt'
 import { LocaleDetector } from '@/components/locale-detector'
-import { NicknamePrompt } from '@/components/nickname-prompt'
 
 type Props = {
   children: React.ReactNode
@@ -105,7 +104,6 @@ export default async function LocaleLayout({ children, params }: Props) {
               <OfflineIndicator />
               {children}
               <SWUpdatePrompt />
-              <NicknamePrompt />
             </div>
           </div>
           </FaceImageProvider>
