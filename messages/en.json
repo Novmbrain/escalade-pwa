@@ -446,6 +446,7 @@
     "firstTimeHint": "First time? Enter your email to sign up",
     "magicLinkSent": "Login link sent to {email}",
     "magicLinkSentHint": "Please check your inbox and click the link",
+    "checkSpamHint": "If you don't see it, please check your spam folder",
     "resendIn": "Resend in {seconds}s",
     "resend": "Resend",
     "backToHome": "Back to home",
