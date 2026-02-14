@@ -375,7 +375,22 @@
     "avatarRemove": "Remove avatar",
     "avatarDeleting": "Removing...",
     "avatarDeleted": "Avatar removed",
-    "avatarDeleteFailed": "Failed to remove, please try again"
+    "avatarDeleteFailed": "Failed to remove, please try again",
+    "personalInfo": "Personal Info",
+    "nickname": "Nickname",
+    "nicknamePlaceholder": "Enter nickname",
+    "heightLabel": "Height (cm)",
+    "reachLabel": "Reach (cm)",
+    "apeIndex": "Ape Index",
+    "apeIndexPositive": "+{value} cm",
+    "apeIndexNegative": "{value} cm",
+    "saveProfile": "Save",
+    "profileSaved": "Profile updated",
+    "profileSaveFailed": "Failed to save, please retry",
+    "nicknamePromptTitle": "Set Your Nickname",
+    "nicknamePromptSubtitle": "Give yourself a climbing alias",
+    "nicknamePromptSave": "Save",
+    "nicknamePromptSkip": "Later"
   },
   "Intro": {
     "heroTitle": "BlocTop",

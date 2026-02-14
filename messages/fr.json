@@ -343,7 +343,22 @@
     "avatarRemove": "Supprimer l'avatar",
     "avatarDeleting": "Suppression...",
     "avatarDeleted": "Avatar supprimé",
-    "avatarDeleteFailed": "Échec de la suppression, réessayez"
+    "avatarDeleteFailed": "Échec de la suppression, réessayez",
+    "personalInfo": "Informations personnelles",
+    "nickname": "Pseudo",
+    "nicknamePlaceholder": "Entrez un pseudo",
+    "heightLabel": "Taille (cm)",
+    "reachLabel": "Envergure (cm)",
+    "apeIndex": "Indice d'envergure",
+    "apeIndexPositive": "+{value} cm",
+    "apeIndexNegative": "{value} cm",
+    "saveProfile": "Enregistrer",
+    "profileSaved": "Profil mis à jour",
+    "profileSaveFailed": "Échec de la sauvegarde, réessayez",
+    "nicknamePromptTitle": "Choisir un pseudo",
+    "nicknamePromptSubtitle": "Donnez-vous un alias d'escalade",
+    "nicknamePromptSave": "Enregistrer",
+    "nicknamePromptSkip": "Plus tard"
   },
   "Intro": {
     "heroTitle": "BlocTop",
