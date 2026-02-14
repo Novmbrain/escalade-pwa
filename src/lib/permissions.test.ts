@@ -47,9 +47,8 @@ describe('permissions', () => {
       expect(ac.statements.session).toBeDefined()
     })
 
-    it('should export roles for admin, crag_creator, and user', () => {
+    it('should export roles for admin and user', () => {
       expect(roles.admin).toBeDefined()
-      expect(roles.crag_creator).toBeDefined()
       expect(roles.user).toBeDefined()
     })
   })
@@ -57,10 +56,6 @@ describe('permissions', () => {
   describe('canCreateCrag', () => {
     it('should allow admin to create crags', () => {
       expect(canCreateCrag('admin')).toBe(true)
-    })
-
-    it('should allow crag_creator to create crags', () => {
-      expect(canCreateCrag('crag_creator')).toBe(true)
     })
 
     it('should deny regular user from creating crags', () => {
@@ -91,7 +86,7 @@ describe('permissions', () => {
       // Second findOne (crags) returns a match
       mockFindOne.mockResolvedValueOnce({ _id: 'abc' })
 
-      const result = await canEditCrag('user1', 'crag1', 'crag_creator')
+      const result = await canEditCrag('user1', 'crag1', 'user')
       expect(result).toBe(true)
       // Should query both collections
       expect(mockCollection).toHaveBeenCalledWith('crag_permissions')
@@ -114,17 +109,10 @@ describe('permissions', () => {
       expect(mockCollection).not.toHaveBeenCalled()
     })
 
-    it('should allow creator to delete', async () => {
-      mockFindOne.mockResolvedValueOnce({ userId: 'user1', cragId: 'crag1', role: 'creator' })
-      const result = await canDeleteCrag('user1', 'crag1', 'crag_creator')
-      expect(result).toBe(true)
-      expect(mockFindOne).toHaveBeenCalledWith({ userId: 'user1', cragId: 'crag1', role: 'creator' })
-    })
-
-    it('should deny manager from deleting', async () => {
-      mockFindOne.mockResolvedValueOnce(null) // no creator role
+    it('should deny non-admin without DB query', async () => {
       const result = await canDeleteCrag('user1', 'crag1', 'user')
       expect(result).toBe(false)
+      expect(mockCollection).not.toHaveBeenCalled()
     })
   })
 
@@ -135,29 +123,16 @@ describe('permissions', () => {
       expect(mockCollection).not.toHaveBeenCalled()
     })
 
-    it('should allow creator to manage permissions', async () => {
-      mockFindOne.mockResolvedValueOnce({ userId: 'user1', cragId: 'crag1', role: 'creator' })
-      const result = await canManagePermissions('user1', 'crag1', 'crag_creator')
-      expect(result).toBe(true)
-      expect(mockFindOne).toHaveBeenCalledWith({ userId: 'user1', cragId: 'crag1', role: 'creator' })
-    })
-
-    it('should deny manager from managing permissions', async () => {
-      mockFindOne.mockResolvedValueOnce(null)
+    it('should deny non-admin without DB query', async () => {
       const result = await canManagePermissions('user1', 'crag1', 'user')
       expect(result).toBe(false)
+      expect(mockCollection).not.toHaveBeenCalled()
     })
   })
 
   describe('canAccessEditor', () => {
     it('should allow admin without DB query', async () => {
       const result = await canAccessEditor('user1', 'admin')
-      expect(result).toBe(true)
-      expect(mockCollection).not.toHaveBeenCalled()
-    })
-
-    it('should allow crag_creator without DB query', async () => {
-      const result = await canAccessEditor('user1', 'crag_creator')
       expect(result).toBe(true)
       expect(mockCollection).not.toHaveBeenCalled()
     })
@@ -186,11 +161,11 @@ describe('permissions', () => {
     it('should return cragIds for user with permissions', async () => {
       mockFind.mockReturnValueOnce({
         toArray: vi.fn().mockResolvedValueOnce([
-          { userId: 'user1', cragId: 'crag1', role: 'creator' },
+          { userId: 'user1', cragId: 'crag1', role: 'manager' },
           { userId: 'user1', cragId: 'crag2', role: 'manager' },
         ]),
       })
-      const result = await getEditableCragIds('user1', 'crag_creator')
+      const result = await getEditableCragIds('user1', 'user')
       expect(result).toEqual(['crag1', 'crag2'])
     })
 
