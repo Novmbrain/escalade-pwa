@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { Check, KeyRound, Fingerprint, ArrowRight } from 'lucide-react'
+import { Check, KeyRound, Fingerprint, ArrowRight, User } from 'lucide-react'
 import { useRouter } from '@/i18n/navigation'
 import { useToast } from '@/components/ui/toast'
 import { Input } from '@/components/ui/input'
@@ -10,9 +10,17 @@ import { authClient, useSession } from '@/lib/auth-client'
 
 export default function SecuritySetupPage() {
   const t = useTranslations('Auth')
+  const tCommon = useTranslations('Common')
   const router = useRouter()
   const { showToast } = useToast()
-  const { data: session, isPending } = useSession()
+  const sessionHook = useSession()
+  const session = sessionHook.data
+  const isPending = sessionHook.isPending
+
+  // Nickname state
+  const [nickname, setNickname] = useState('')
+  const [nicknameSaved, setNicknameSaved] = useState(false)
+  const [isSavingNickname, setIsSavingNickname] = useState(false)
 
   // Password form state
   const [newPassword, setNewPassword] = useState('')
@@ -29,6 +37,17 @@ export default function SecuritySetupPage() {
       router.replace('/login')
     }
   }, [session, isPending, router])
+
+  // If user already has a name (returning user), mark as saved
+  useEffect(() => {
+    if (session) {
+      const existingName = (session.user as { name?: string }).name
+      if (existingName) {
+        setNickname(existingName)
+        setNicknameSaved(true)
+      }
+    }
+  }, [session])
 
   const handleSetPassword = useCallback(async () => {
     if (!newPassword || !confirmPassword || isSettingPassword) return
@@ -66,6 +85,22 @@ export default function SecuritySetupPage() {
       setIsSettingPassword(false)
     }
   }, [newPassword, confirmPassword, isSettingPassword, showToast, t])
+
+  const handleSaveNickname = useCallback(async () => {
+    const trimmed = nickname.trim()
+    if (!trimmed || isSavingNickname) return
+    setIsSavingNickname(true)
+    try {
+      await authClient.updateUser({ name: trimmed })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (sessionHook as any).refetch?.({ query: { disableCookieCache: true } })
+      setNicknameSaved(true)
+    } catch {
+      showToast(t('nicknameSaveFailed'), 'error')
+    } finally {
+      setIsSavingNickname(false)
+    }
+  }, [nickname, isSavingNickname, sessionHook, showToast, t])
 
   const handleSetupPasskey = useCallback(async () => {
     try {
@@ -110,6 +145,59 @@ export default function SecuritySetupPage() {
             >
               {t('securitySetupDesc')}
             </p>
+          </div>
+
+          {/* Nickname Card (required) */}
+          <div
+            className="glass p-4 mb-4"
+            style={{
+              borderRadius: 'var(--theme-radius-xl)',
+              border: !nicknameSaved ? '1px solid var(--theme-primary)' : undefined,
+            }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <User className="w-4 h-4" style={{ color: 'var(--theme-primary)' }} />
+              <span className="text-sm font-semibold" style={{ color: 'var(--theme-on-surface)' }}>
+                {t('setNickname')}
+              </span>
+              {nicknameSaved && (
+                <Check className="w-4 h-4 ml-auto" style={{ color: 'var(--theme-success)' }} />
+              )}
+            </div>
+            <p className="text-xs mb-3" style={{ color: 'var(--theme-on-surface-variant)' }}>
+              {t('setNicknameHint')}
+            </p>
+
+            {!nicknameSaved ? (
+              <div>
+                <div className="mb-3">
+                  <Input
+                    value={nickname}
+                    onChange={setNickname}
+                    placeholder={t('nicknamePlaceholder')}
+                    variant="form"
+                    maxLength={20}
+                    autoFocus
+                  />
+                </div>
+                <button
+                  onClick={handleSaveNickname}
+                  disabled={!nickname.trim() || isSavingNickname}
+                  className="w-full flex items-center justify-center gap-2 p-3 text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-40"
+                  style={{
+                    backgroundColor: 'var(--theme-primary)',
+                    color: 'var(--theme-on-primary)',
+                    borderRadius: 'var(--theme-radius-lg)',
+                  }}
+                >
+                  {isSavingNickname ? t('sending') : tCommon('confirm')}
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm font-medium" style={{ color: 'var(--theme-on-surface)' }}>
+                {nickname}
+              </p>
+            )}
           </div>
 
           {/* Password Setup Card */}
@@ -213,11 +301,12 @@ export default function SecuritySetupPage() {
             )}
           </div>
 
-          {/* Skip button */}
+          {/* Skip button — only enabled after nickname is set */}
           <div className="text-center">
             <button
               onClick={() => router.push('/')}
-              className="inline-flex items-center gap-1 text-sm font-medium"
+              disabled={!nicknameSaved}
+              className="inline-flex items-center gap-1 text-sm font-medium transition-opacity disabled:opacity-30"
               style={{ color: 'var(--theme-on-surface-variant)' }}
             >
               {t('skipForNow')}
