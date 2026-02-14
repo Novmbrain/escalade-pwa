@@ -259,4 +259,56 @@ async function seed() {
   }
 }
 
-seed()
+/**
+ * RBAC 简化迁移: creator → manager, crag_creator → user
+ * 运行方式: npx tsx scripts/seed.ts migrateRbacSimplification
+ */
+async function migrateRbacSimplification() {
+  const uri = process.env.MONGODB_URI
+  const dbName = process.env.MONGODB_DB_NAME
+
+  if (!uri || !dbName) {
+    console.error('❌ 缺少环境变量 MONGODB_URI 或 MONGODB_DB_NAME')
+    process.exit(1)
+  }
+
+  const client = new MongoClient(uri)
+
+  try {
+    await client.connect()
+    const db = client.db(dbName)
+
+    // 1. crag_permissions: creator → manager
+    const permResult = await db.collection('crag_permissions').updateMany(
+      { role: 'creator' },
+      { $set: { role: 'manager' } }
+    )
+    console.log(`crag_permissions: ${permResult.modifiedCount} records updated (creator → manager)`)
+
+    // 2. user: crag_creator → user
+    const userResult = await db.collection('user').updateMany(
+      { role: 'crag_creator' },
+      { $set: { role: 'user' } }
+    )
+    console.log(`user: ${userResult.modifiedCount} records updated (crag_creator → user)`)
+
+    console.log('RBAC simplification migration complete.')
+  } catch (error) {
+    console.error('❌ Migration failed:', error)
+    process.exit(1)
+  } finally {
+    await client.close()
+  }
+}
+
+// CLI dispatch
+const command = process.argv.find(
+  arg => !arg.startsWith('-') && arg !== 'development' && arg !== 'production' &&
+    !arg.includes('tsx') && !arg.includes('seed')
+)
+
+if (command === 'migrateRbacSimplification') {
+  migrateRbacSimplification()
+} else {
+  seed()
+}
