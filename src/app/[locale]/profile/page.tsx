@@ -57,6 +57,19 @@ export default function ProfilePage() {
     sessionRefetchRef.current?.({ query: { disableCookieCache: true } })
   }, [])
 
+  // Editor access check — fetch /api/editor/crags when logged in
+  const [hasEditorAccess, setHasEditorAccess] = useState(false)
+  useEffect(() => {
+    if (!isLoggedIn) { setHasEditorAccess(false); return }
+    if (isAdmin) { setHasEditorAccess(true); return }
+    fetch('/api/editor/crags')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data && data.crags?.length > 0) setHasEditorAccess(true)
+      })
+      .catch(() => {})
+  }, [isLoggedIn, isAdmin])
+
   // Drawer states
   const [securityDrawerOpen, setSecurityDrawerOpen] = useState(false)
   const [authorDrawerOpen, setAuthorDrawerOpen] = useState(false)
@@ -340,6 +353,7 @@ export default function ProfilePage() {
             },
           }}
           isAdmin={isAdmin}
+          hasEditorAccess={hasEditorAccess}
           onAvatarChange={handleAvatarChange}
         />
       )}
