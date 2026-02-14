@@ -19,6 +19,7 @@ interface SecurityDrawerProps {
   onClose: () => void
   session: { user: { email: string; role?: string; image?: string | null; name?: string; height?: number; reach?: number } }
   isAdmin: boolean
+  hasEditorAccess: boolean
   onAvatarChange?: (url: string | null) => void
 }
 
@@ -69,7 +70,7 @@ async function getCroppedBlob(
   })
 }
 
-export function SecurityDrawer({ isOpen, onClose, session, isAdmin, onAvatarChange }: SecurityDrawerProps) {
+export function SecurityDrawer({ isOpen, onClose, session, isAdmin, hasEditorAccess, onAvatarChange }: SecurityDrawerProps) {
   const tAuth = useTranslations('Auth')
   const tCommon = useTranslations('Common')
   const t = useTranslations('Profile')
@@ -715,8 +716,8 @@ export function SecurityDrawer({ isOpen, onClose, session, isAdmin, onAvatarChan
           </button>
         </div>
 
-        {/* Editor entry (admin only) */}
-        {isAdmin && (
+        {/* Editor entry (admin or manager with crag permissions) */}
+        {hasEditorAccess && (
           <Link
             href="/editor"
             className="glass-light w-full flex items-center gap-3 p-3 transition-all active:scale-[0.98]"
